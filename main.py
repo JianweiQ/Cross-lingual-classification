@@ -1,5 +1,3 @@
-import io
-from nltk.stem.snowball import SnowballStemmer
 import numpy as np
 from sklearn.svm import SVC
 from sklearn.pipeline import Pipeline
@@ -54,10 +52,12 @@ def fetch_20newsgroups_sub(subset, size=float('inf')):
 def main():
     # English word Embedding
     # TODO: Stop words, Stem
-    X, y = fetch_20newsgroups_sub('train', 20)
+    X, y = fetch_20newsgroups_sub('train')
 #     model = FastText(sentences=X, size=100, sg=1, min_count=2, window=5, negative=5)
     dim = 100
     model = Word2Vec(sentences=X, size=dim)
+    
+    # TODO: Chinese word Embedding
     
     # Classification
     w2v = dict(zip(model.wv.index2word, model.wv.syn0))
@@ -67,7 +67,7 @@ def main():
     svm_w2v.fit(X, y)
     
     # Test
-    X1, y1 = fetch_20newsgroups_sub('test', 100)
+    X1, y1 = fetch_20newsgroups_sub('test')
     y_hat = svm_w2v.predict(X1)
     
     hit = 0
