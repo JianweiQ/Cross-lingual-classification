@@ -30,7 +30,7 @@ def main():
     
     # English classifiers
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33)
-    classifier(X_train, y_train, X_test, y_test)
+    classifiers(X_train, y_train, X_test, y_test)
     
     # Chinese w2v
 
@@ -152,43 +152,22 @@ class MeanEmbeddingVectorizer(object):
         ])
 
 
-def classifier(X_train, y_train, X_test, y_test):
+def classifiers(X_train, y_train, X_test, y_test):
     """param: X_train, y_train are feature vectors and targets of one language
     param: X_test, y_test are feature vectors and targets of another language"""
-#     print("BernoulliNB:")
-#     clf = BernoulliNB()
-#     clf.fit(X_train, y_train)  # fit the model on language 1
-#     y2_pred = clf.predict(X_test)  # use the model to predict on language 2
-#     print("accuracy =", accuracy_score(y_test, y2_pred))
-#     print(confusion_matrix(y_test, y2_pred))
 
-    print("LinearSVC:")
-    clf = LinearSVC()
-    clf.fit(X_train, y_train)  # fit the model on language 1
-    y2_pred = clf.predict(X_test)  # use the model to predict on language 2
-    print("accuracy =", accuracy_score(y_test, y2_pred))
-    print(confusion_matrix(y_test, y2_pred))
-
-    print("ExtraTreesClassifier:")
-    clf = ExtraTreesClassifier()
-    clf.fit(X_train, y_train)  # fit the model on language 1
-    y2_pred = clf.predict(X_test)  # use the model to predict on language 2
-    print("accuracy =", accuracy_score(y_test, y2_pred))
-    print(confusion_matrix(y_test, y2_pred))
-
-    print("LogisticRegression:")
-    clf = LogisticRegression()
-    clf.fit(X_train, y_train)  # fit the model on language 1
-    y2_pred = clf.predict(X_test)  # use the model to predict on language 2
-    print("accuracy =", accuracy_score(y_test, y2_pred))
-    print(confusion_matrix(y_test, y2_pred))
-
-#     print("MultinomialNB:")
-#     clf = MultinomialNB()
-#     clf.fit(X_train, y_train)  # fit the model on language 1
-#     y2_pred = clf.predict(X_test)  # use the model to predict on language 2
-#     print("accuracy =", accuracy_score(y_test, y2_pred))
-#     print(confusion_matrix(y_test, y2_pred))
+    def classifier(clf, clf_name):
+        print(clf_name + ":")
+        clf.fit(X_train, y_train)
+        y2_pred = clf.predict(X_test)
+        print("accuracy =", accuracy_score(y_test, y2_pred))
+        print(confusion_matrix(y_test, y2_pred))
+        
+    classifier(LinearSVC(), "LinearSVC")
+    classifier(ExtraTreesClassifier(), "ExtraTreesClassifier")
+    classifier(LogisticRegression(), "LogisticRegression")
+#     classifier(BernoulliNB(), "BernoulliNB")
+#     classifier(MultinomialNB(), "MultinomialNB")
 
 
 if __name__ == '__main__':
