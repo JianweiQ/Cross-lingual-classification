@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 import thulac
 import re
@@ -20,6 +21,7 @@ from sklearn.linear_model import LogisticRegression
 
 
 def main():
+    warnings.filterwarnings("ignore", category=FutureWarning)
     # English w2v
     # Yixin: Put wiki.zh.align.vec wiki.en.align.vec in subfolder data
     cat = ['rec.sport.baseball', 'talk.politics.misc', 'sci.electronics'] 
@@ -31,20 +33,23 @@ def main():
       
     # English classifiers
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33)
+    print("English training vectors for English testing vectors:")
     classifiers(X_train, y_train, X_test, y_test)
      
     # Chinese w2v
     # Yixin: Put Chinese corpus in subfolder data/sport data/politics data/science
-    chineseWordSegmentation()
+#     chineseWordSegmentation() # run only once to get output
     X_c, y_c = tokenizeChinese()
     w2v_zh = loadWordVectors('data/wiki.zh.align.vec', 10000)  
     X_c = featurizeChinese(X_c, w2v_zh)
     
     # Chinese classifiers
     X_c_train, X_c_test, y_c_train, y_c_test = train_test_split(X_c, y_c, test_size=0.33)
+    print("Chinese training vectors for Chinese testing vectors:")
     classifiers(X_c_train, y_c_train, X_c_test, y_c_test)
     
     # English classifiers to train Chinese vectors
+    print("English training vectors for Chinese testing vectors:")
     classifiers(X_train, y_train, X_c, y_c)
     
 
@@ -233,24 +238,3 @@ def featurizeChinese(docs, w2v):
 
 if __name__ == '__main__':
     main()
-
-#  'alt.atheism',    0
-#  'comp.graphics',    1
-#  'comp.os.ms-windows.misc',    2
-#  'comp.sys.ibm.pc.hardware',    3
-#  'comp.sys.mac.hardware',    4
-#  'comp.windows.x',    5
-#  'misc.forsale',    6
-#  'rec.autos',    7
-#  'rec.motorcycles',    8
-#  'rec.sport.baseball',    9
-#  'rec.sport.hockey',    10
-#  'sci.crypt',    11
-#  'sci.electronics',    12
-#  'sci.med',    13
-#  'sci.space',    14
-#  'soc.religion.christian',    15
-#  'talk.politics.guns',    16
-#  'talk.politics.mideast',    17
-#  'talk.politics.misc',    18
-#  'talk.religion.misc',    19
