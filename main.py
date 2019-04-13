@@ -25,11 +25,16 @@ def main():
     # English w2v
     # Yixin: Put wiki.zh.align.vec wiki.en.align.vec in subfolder data
     cat = ['rec.sport.baseball', 'talk.politics.misc', 'sci.electronics'] 
+#     # More cat lead to worse results
+#     cat = ['rec.sport.baseball', 'rec.sport.hockey',
+#            'talk.politics.mideast', 'talk.politics.guns', 'talk.politics.misc',
+#            'sci.crypt', 'sci.electronics', 'sci.med', 'sci.space'] 
     englishNews = fetch20newsgroup(cat, "all")
     englishWords = tokenizeEnglish(englishNews)
     w2v_en = loadWordVectors('data/wiki.en.align.vec', 10000)  # Yixin: can be slow, try 10000 first
     X = featurizeEnglish(englishWords, w2v_en)
     y = englishNews.target
+#     y = relabel(englishNews.target)
       
     # English classifiers
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33)
@@ -52,7 +57,21 @@ def main():
     print("English training vectors for Chinese testing vectors:")
     classifiers(X_train, y_train, X_c, y_c)
     
-
+    # Chinese classifiers to train English vectors
+    print("Chinese training vectors for English testing vectors:")
+    classifiers(X_c_train, y_c_train, X, y)
+    
+def relabel(target):
+    y = []
+    for t in target:
+        if t == 0 or t == 1:
+            y.append(0)
+        elif t == 2 or t == 3 or t == 4:
+            y.append(1)
+        else:
+            y.append(2)
+    return y
+    
 def fetch20newsgroup(cat, subset):
     """ param: cat, a list of categories
     return: a list of strings"""
@@ -159,6 +178,7 @@ def classifiers(X_train, y_train, X_test, y_test):
         clf.fit(X_train, y_train)
         y2_pred = clf.predict(X_test)
         print("accuracy =", accuracy_score(y_test, y2_pred))
+        # row for true label and column for predicted label
         print(confusion_matrix(y_test, y2_pred))
         
     classifier(LinearSVC(), "LinearSVC")
@@ -173,12 +193,13 @@ def chineseWordSegmentation():
     # sport 0-131603.txt
     # politics 339764-402849.txt
     # science 481650-644578.txt
-    for i in range(1000):
-        filename = str(i).zfill(4)
+    for i in range(50000, 60000):
+        if (i/10) == int(i/10): print(i)
+        filename = str(i)
         # TODO pick 1000 files only for speed
-        thu.cut_f("data/sport/10" + filename + ".txt", "data/sport_out/10" + filename + ".txt")
-        thu.cut_f("data/politics/34" + filename + ".txt", "data/politics_out/34" + filename + ".txt")
-        thu.cut_f("data/science/49" + filename + ".txt", "data/science_out/49" + filename + ".txt")
+        thu.cut_f("data/sport/" + filename + ".txt", "data/sport_out/" + filename + ".txt")
+        thu.cut_f("data/politics/3" + filename + ".txt", "data/politics_out/3" + filename + ".txt")
+        thu.cut_f("data/science/5" + filename + ".txt", "data/science_out/5" + filename + ".txt")
 
 
 def tokenizeChinese():
@@ -238,3 +259,4 @@ def featurizeChinese(docs, w2v):
 
 if __name__ == '__main__':
     main()
+#     chineseWordSegmentation()
