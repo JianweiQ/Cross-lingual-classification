@@ -6,6 +6,7 @@ nltk
 sklearn
 thulac
 numpy
+keras
 
 # Pre-data
 nltk.download('wordnet')
