@@ -53,23 +53,41 @@ def create_embedding_matrix(filepath, word_index, embedding_dim):
     return embedding_matrix
 
 
-def CNN(X, y, embeding):
+def CNNCross(X, y, embeding):
     
-    sentences_train, sentences_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=1000)
+    X_train, X_test, y_train, y_test, tok, em, v = [0] * 2, [0] * 2, [0] * 2, [0] * 2, [0] * 2, [0] * 2, [0] * 2
     
-    tokenizer = Tokenizer(num_words=5000, filters='!"#$%&()*+,-./:;<=>?@[\\]^_`{|}~\t\n', lower=True, split=' ')
-    tokenizer.fit_on_texts(sentences_train)
+    for i in range(len(X)):
+        X_train[i], X_test[i], y_train[i], y_test[i] = train_test_split(X[i], y[i], test_size=0.33, random_state=1000)
+
+        tok[i] = Tokenizer(num_words=5000, filters='!"#$%&()*+,-./:;<=>?@[\\]^_`{|}~\t\n', lower=True, split=' ')
+        tok[i].fit_on_texts(X_train[i])
     
-    X_train = tokenizer.texts_to_sequences(sentences_train)
-    X_test = tokenizer.texts_to_sequences(sentences_test)
+        X_train[i] = tok[i].texts_to_sequences(X_train[i])
+        X_test[i] = tok[i].texts_to_sequences(X_test[i])
+        X_train[i] = pad_sequences(X_train[i], padding='post', maxlen=maxlen)
+        X_test[i] = pad_sequences(X_test[i], padding='post', maxlen=maxlen)
+        em[i] = create_embedding_matrix(embeding[i], tok[i].word_index, embedding_dim)
+        v[i] = len(tok[i].word_index) + 1
+#         CNN(X_train[i], y_train[i], X_test[i], y_test[i], v[i], em[i])
     
-    X_train = pad_sequences(X_train, padding='post', maxlen=maxlen)
-    X_test = pad_sequences(X_test, padding='post', maxlen=maxlen)
-    
-    vocab_size = len(tokenizer.word_index) + 1  # Adding 1 because of reserved 0 index
-    
-    embedding_matrix = create_embedding_matrix(embeding, tokenizer.word_index, embedding_dim)
-    
+    # E-C
+    em = np.concatenate((em[0], em[1]), axis=0)
+    X_test_shift = np.copy(X_test[1])
+    for item in X_test_shift:
+        item += v[0]
+    CNN(X_train[0], y_train[0], X_test_shift, y_test[1], v[0] + v[1], em)
+    print(em[v[0]])
+    # C-E
+    em = np.concatenate((em[1], em[0]), axis=0)
+    X_test_shift = np.copy(X_test[0])
+    for item in X_test_shift:
+        item += v[1]
+    CNN(X_train[1], y_train[1], X_test_shift, y_test[0], v[0] + v[1], em)
+
+
+def CNN(X_train, y_train, X_test, y_test, vocab_size, embedding_matrix):
+        
     model = Sequential()
     model.add(layers.Embedding(vocab_size, embedding_dim,
                                weights=[embedding_matrix],
@@ -99,12 +117,11 @@ def main():
     # English
     cat = ['rec.sport.baseball', 'talk.politics.misc', 'sci.electronics'] 
     dataset = fetch20newsgroup(cat, "all")
-    X = dataset.data
-    y = dataset.target
-    CNN(X, y, 'data/wiki.en.align.vec')
+    X_e = dataset.data
+    y_e = dataset.target
     # Chinese
-    X, y = fetchTHUnews(1000)
-    CNN(X, y, 'data/wiki.zh.align.vec')
+    X_c, y_c = fetchTHUnews(1000)
+    CNNCross([X_e, X_c], [y_e, y_c], ['data/wiki.en.align.vec', 'data/wiki.zh.align.vec'])
 
 
 if __name__ == '__main__':
