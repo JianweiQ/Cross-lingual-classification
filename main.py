@@ -38,23 +38,22 @@ def main():
 #         y = relabel20newsgroup(y)
     elif model == 2:  # 1 for THU, 2 for UM-corpus
         X, y, X_c, y_c = fetchUMCorpus()
-        
+         
     # English w2v
     X = tokenizeEnglish(X)
     w2v_en = loadWordVectors('data/wiki.en.align.vec', MAX_LINE)  
-#     w2v_en = loadWordVectors('data/vectors-en.txt', MAX_LINE)
     X = featurizeEnglish(X, w2v_en)
-      
+       
     # English classifiers
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33)
     print("English training vectors for English testing vectors:")
     classifiers(X_train, y_train, X_test, y_test)
-     
+      
     # Chinese w2v
     if model == 1:
         X_c, y_c = fetchTHUnews(1000)
+    X_c = tokenizeChinese(X_c)
     w2v_zh = loadWordVectors('data/wiki.zh.align.vec', MAX_LINE)  
-#     w2v_zh = loadWordVectors('data/vectors-zh.txt', MAX_LINE)  
     X_c = featurizeChinese(X_c, w2v_zh)
     
     # Chinese classifiers
@@ -102,14 +101,10 @@ def fetchTHUnews(size=float("inf")):
         param: target, int for target label
         param: X to append
         param: y to append"""
-        cur = 0
+        cur = 1
         for file in os.listdir(file_name):
-            doc = []
             file = open(file_name + "/" + file, 'r')
-            for line in file:
-                l = line.split()
-                doc = doc + l
-            X.append(doc)
+            X.append(file.read())
             y.append(target)
             if cur >= size: break
             else: cur += 1
@@ -219,9 +214,23 @@ def tokenizeEnglish(docs):
     return ret
 
 
-def tokenizeChinese():
+def tokenizeChinese(docs):
+    """param: docs, a list of lists of tokens (strings)
+    return: docs with extreme frequence, stop words, punctuation removed"""
     print('tokenizeChinese...')
-    # TODO remove frequence, stop words, punctuation
+    file = open("data/stopwords-zh.txt", 'r')
+    stop_words_chinese = file.read().splitlines()
+    tfidf = TfidfVectorizer(stop_words=stop_words_chinese, max_df=0.7, min_df=3, lowercase=False, token_pattern=r'(?u)\b\w+\b')
+    weight = tfidf.fit_transform(docs).toarray()
+    word = tfidf.get_feature_names()
+    ret = []
+    for i in range(len(weight)):
+        doc = ""
+        for j in range(len(word)):
+            if weight[i][j] > 0:
+                doc = doc + " " + word[j]
+        ret.append(doc)
+    return ret
 
 
 def featurizeEnglish(docs, w2v):
@@ -238,7 +247,7 @@ def featurizeEnglish(docs, w2v):
 
         def fit(self, X):
             """X is tokenized docs, list[list[string]]"""
-            tfidf = TfidfVectorizer(analyzer=lambda x: x, stop_words='english', max_df=0.3, min_df=5)
+            tfidf = TfidfVectorizer(analyzer=lambda x: x, stop_words='english', max_df=0.8, min_df=2)
             tfidf.fit(X)
             # if a word was never seen - it must be at least as infrequent
             # as any of the known words - so the default idf is the max of
@@ -289,6 +298,7 @@ def featurizeChinese(docs, w2v):
             retl = []
             for doc in X:
                 l = []
+                doc = doc.split()
                 for word in doc:
                     count += 1
                     if word in self.word2vec:
