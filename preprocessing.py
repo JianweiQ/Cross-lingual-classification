@@ -1,9 +1,7 @@
-import numpy as np
 import thulac
+import jieba
 import re
-import io
 import os
-from collections import defaultdict
 from sklearn.datasets import fetch_20newsgroups
 from nltk.tokenize import RegexpTokenizer
 from nltk.stem import WordNetLemmatizer
@@ -33,6 +31,76 @@ def relabel20newsgroup(target):
             y.append(2)
     return y
 
+
+def fetchRCV2():
+
+    def transfer_y(y_str):
+        if y_str == "CCAT":
+            return 0
+        elif y_str == "ECAT":
+            return 1
+        elif y_str == "GCAT":
+            return 2
+        elif y_str == "MCAT":
+            return 3
+        print("bad label")
+        
+    def read_files(file_name, X, y, lang):
+        """param: file_name, string type file directory
+        param: X to append
+        param: y to append
+        param: lang, E for english and C for chinese"""
+        file = open(file_name, 'r')
+        for line in file:
+            label, text = line.strip().split('\t') 
+            if lang == 'E':
+                X.append(text[2:-1])  # remove b''
+            else:
+                X.append(text)
+            y.append(transfer_y(label))
+
+    print('fetchRCV2...')
+    X_e = []
+    y_e = []
+    X_c = []
+    y_c = []
+    read_files("data/RCV2/chinese.dev_se", X_c, y_c, 'C')
+    read_files("data/RCV2/chinese.test_se", X_c, y_c, 'C')
+    read_files("data/RCV2/chinese.train.1000_se", X_c, y_c, 'C')
+    read_files("data/RCV2/english.dev", X_e, y_e, 'E')
+    read_files("data/RCV2/english.test", X_e, y_e, 'E')
+    read_files("data/RCV2/english.train.1000", X_e, y_e, 'E')
+    return (X_e, y_e, X_c, y_c)
+
+
+def RCV2WordSegmentationJieba():
+    print('RCV2WordSegmentationJieba...')
+    
+    def read_files(input_file):
+        """param: input_file, string type file directory"""
+        output_file_zh = input_file + "_se"
+        i_file = open(input_file, 'r')
+        o_file_zh = open(output_file_zh, 'a')
+        for line in i_file:
+            label, text = line.strip().split('\t') 
+            newitem = jieba.cut(text)
+            newitem = " ".join(newitem)
+            newitem = label + '\t' + newitem + '\n'
+            o_file_zh.write(newitem)
+        o_file_zh.close()
+    
+    read_files("data/RCV2/chinese.dev")
+    read_files("data/RCV2/chinese.test")
+    read_files("data/RCV2/chinese.train.1000")
+
+
+def RCV2WordSegmentationTHU():
+    print('RCV2WordSegmentationTHU...')
+    thu = thulac.thulac(seg_only=True)
+    thu.cut_f("data/RCV2/chinese.dev", "data/RCV2/chinese.dev_thu")
+    thu.cut_f("data/RCV2/chinese.test", "data/RCV2/chinese.test_thu")
+    thu.cut_f("data/RCV2/chinese.train.1000", "data/RCV2/chinese.train.1000_thu")
+    
 
 def fetchTHUnews(size=float("inf")):
 
@@ -130,10 +198,12 @@ def UMWordSegmentation(filenames, size=float("inf")):
         thu.cut_f("data/UM-Corpus/zh/" + file, "data/UM-Corpus/zh_s/" + file)
 
 
-def tokenizeEnglish(docs):
-    """param: docs, a list of strings
-    return: a list of lists of tokens (words)"""
-
+def tokenize(docs, lang):
+    """param: docs, a list of lists of sentences (continuous)
+    param: lang, E for english and C for chinese
+    return: a list of lists of sentences (continuous)
+    stemmed, docs with extreme frequence, stop words, punctuation removed"""
+    
     class LemmaTokenizer(object):  # for stemming and lemmatizing
 
         def __init__(self):
@@ -145,22 +215,18 @@ def tokenizeEnglish(docs):
             doc = ''.join([i for i in doc if not i.isdigit()])  # remove digits/numbers
             return [self.wnl.lemmatize(t) for t in tokenizer.tokenize(doc)]
     
-    print('tokenizeEnglish...')
-    # vectorizer = TfidfVectorizer(stop_words='english', max_df=0.3, min_df=5, tokenizer=LemmaTokenizer())
-    # X = vectorizer.fit_transform(englishNews.data)
-    # y = englishNews.target
-    tokenizer = LemmaTokenizer()
-    ret = [tokenizer(doc) for doc in docs]
-    return ret
-
-
-def tokenizeChinese(docs):
-    """param: docs, a list of lists of tokens (strings)
-    return: docs with extreme frequence, stop words, punctuation removed"""
-    print('tokenizeChinese...')
-    file = open("data/stopwords-zh.txt", 'r')
-    stop_words_chinese = file.read().splitlines()
-    tfidf = TfidfVectorizer(stop_words=stop_words_chinese, max_df=0.7, min_df=3, lowercase=False, token_pattern=r'(?u)\b\w+\b')
+    if lang == 'E':
+        print('tokenizeEnglish...')
+        tokenizer = LemmaTokenizer()  # stemmed
+        docs = [tokenizer(doc) for doc in docs]
+        for i in range(len(docs)): 
+            docs[i] = " ".join(docs[i])  # merge to sentences
+        tfidf = TfidfVectorizer(stop_words='english', max_df=0.7, min_df=3)  # , token_pattern=u'(?u)\b\w*[a-zA-Z]\w*\b')
+    else:
+        print('tokenizeChinese...')
+        file = open("data/stopwords-zh.txt", 'r')
+        stop_words_chinese = file.read().splitlines()
+        tfidf = TfidfVectorizer(stop_words=stop_words_chinese, max_df=0.7, min_df=3, lowercase=False, token_pattern=r'(?u)\b\w+\b')
     weight = tfidf.fit_transform(docs).toarray()
     word = tfidf.get_feature_names()
     ret = []
@@ -173,107 +239,38 @@ def tokenizeChinese(docs):
     return ret
 
 
-def featurizeEnglish(docs, w2v):
-    """param: docs, a list of lists of tokens (strings)
-    w2v, a dictionary of word embeddings
-    return: a matrix, a row represents a doc's feature vector"""
+def saveMidOutput(X_e, X_c, y_e, y_c, dataset_option):
 
-    class TfidfEmbeddingVectorizer(object):
+    def save(midout, name, isX=0):
+        file = open("mid/" + name + str(dataset_option), 'w')
+        for item in midout:
+            if isX == 0: 
+                item = str(item)
+            file.write(item + "\n")
+        file.close()
 
-        def __init__(self, word2vec, dim):
-            self.word2vec = word2vec
-            self.word2weight = None
-            self.dim = dim
+    print('saveMidOutput...')
+    save(X_e, "X_e", 1)
+    save(y_e, "y_e", 0)
+    save(X_c, "X_c", 1)
+    save(y_c, "y_c", 0)
 
-        def fit(self, X):
-            """X is tokenized docs, list[list[string]]"""
-            tfidf = TfidfVectorizer(analyzer=lambda x: x, stop_words='english', max_df=0.8, min_df=2)
-            tfidf.fit(X)
-            # if a word was never seen - it must be at least as infrequent
-            # as any of the known words - so the default idf is the max of
-            # known idf's
-            max_idf = max(tfidf.idf_)
-            self.word2weight = defaultdict(
-                lambda: max_idf,
-                [(w, tfidf.idf_[i]) for w, i in tfidf.vocabulary_.items()])
-
-            return self
-
-        def transform(self, X):
-            """X is tokenized docs, list[list[string]]"""
-            return np.array([
-                                np.mean([self.word2vec[w] * self.word2weight[w]
-                                         for w in words if w in self.word2vec] or
-                                        [np.zeros(self.dim)], axis=0)
-                                for words in X
-                                ])
-
-    print('featurizeEnglish...')
-    vectorizer = TfidfEmbeddingVectorizer(w2v, 300)
-    vectorizer.fit(docs)
-    X = vectorizer.transform(docs)
-    return X
-
-
-def featurizeChinese(docs, w2v):
-    """param: docs, a list of lists of tokens (strings)
-    w2v, a dictionary of word embeddings
-    return: a matrix, a row represents a doc's feature vector"""
     
-    class MeanEmbeddingVectorizer(object):
+def loadMidOutput(dataset_option):  
 
-        def __init__(self, word2vec, dim=300):
-            self.word2vec = word2vec
-            # if a text is empty we should return a vector of zeros
-            # with the same dimensionality as all the other vectors
-    #         self.dim = len(word2vec.itervalues().next())
-            self.dim = dim
-    
-        def fit(self, X):
-            return self
-    
-        def transform(self, X):
-            hit = 0
-            count = 0
-            retl = []
-            for doc in X:
-                l = []
-                doc = doc.split()
-                for word in doc:
-                    count += 1
-                    if word in self.word2vec:
-                        l.append(self.word2vec[word])
-                        hit += 1           
-                retl.append(np.mean(l or np.zeros(self.dim), axis=0))
-            print("The hit rate is " + str(hit / count))
-            return np.array(retl)
-        
-#             return np.array([
-#                 np.mean([self.word2vec[word] for word in doc if word in self.word2vec]
-#                         or [np.zeros(self.dim)], axis=0)
-#                 for doc in X
-#             ])
-    
-    print('featurizeChinese...')
-    vectorizer = MeanEmbeddingVectorizer(w2v, 300)
-    X = vectorizer.transform(docs)
-    return X
+    def load(midout, name, isX=0):
+        file = open("mid/" + name + str(dataset_option), 'r')
+        for line in file:
+            if isX == 1: 
+                midout.append(line.strip())
+            else:
+                l = line.strip().split()
+                midout.append(int(l[0]))
 
-
-def loadWordVectors(fname, size=float('inf')):
-    """param: fname, file name of word embeddings
-    size: for max loaded lines restriction
-    return: a dictionary storing the embeddings"""
-    print('loadWordVectors:' + fname + '...')
-    fin = io.open(fname, 'r', encoding='utf-8', newline='\n', errors='ignore')
-    n, d = map(int, fin.readline().split())
-    print(n, d)  # n is #words, d is dimension
-    # fin.readline()
-    data = {}
-    cur = 0
-    for line in fin:
-        tokens = line.rstrip().split(' ')
-        data[tokens[0]] = np.asarray(list(map(float, tokens[1:])))  # Yixin: added np.asarray(list())
-        if (cur > size): break 
-        else: cur += 1
-    return data
+    print('loadMidOutput...')
+    X_e, X_c, y_e, y_c = [], [], [], []
+    load(X_e, "X_e", 1)
+    load(y_e, "y_e", 0)
+    load(X_c, "X_c", 1)
+    load(y_c, "y_c", 0)
+    return (X_e, X_c, y_e, y_c)

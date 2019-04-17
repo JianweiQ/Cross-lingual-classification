@@ -1,17 +1,24 @@
 import warnings
-from sklearn.model_selection import train_test_split
-from classifiers import classifiers
-from cnn import CNNCross
-from preprocessing import *
+import sys
+from preprocessing import fetch20newsgroup, fetchRCV2, fetchTHUnews, fetchUMCorpus, tokenize, saveMidOutput, loadMidOutput
+from classifiers import average_traditional_classifiers
+# from cnn import CNNCross
+from test import CNNCross
 
 
 def main():
     warnings.filterwarnings("ignore", category=FutureWarning)
     
-    # ==========================data preprocessing==========================
+    embed_file_en = 'data/wiki.en.align.vec'
+    embed_file_zh = 'data/wiki.zh.align.vec'
     
-    dataset_option = 1  # 1 for THU, 2 for UM-corpus
-    # English corpus loading
+    dataset_option = 0  # 1 for 20NewsGroup&THU, 2 for UM-corpus, 3 for RCV2, else for skip
+    model_option = 2  # 1 for traditional classifiers, 2 for CNN, else for skip
+    
+#     sys.stdout = Logger('output' + str(dataset_option) + str(model_option) + ".log")
+    
+    # ==========================Data preprocessing==========================
+    
     if dataset_option == 1:
         cat = ['rec.sport.baseball', 'talk.politics.misc', 'sci.electronics'] 
 #         cat = ['rec.sport.baseball', 'rec.sport.hockey',
@@ -21,52 +28,45 @@ def main():
         X_e = dataset.data
         y_e = dataset.target
 #         y_e = relabel20newsgroup(y_e)
-    elif dataset_option == 1:  # 1 for THU, 2 for UM-corpus
-        X_e, y_e, X_c, y_c = fetchUMCorpus()
-    
-    # Chinese corpus loading
-    if dataset_option == 1:
         X_c, y_c = fetchTHUnews(1000)
-    X_c = tokenizeChinese(X_c)  
+    elif dataset_option == 2:
+        X_e, y_e, X_c, y_c = fetchUMCorpus()
+    elif dataset_option == 3:
+        X_e, y_e, X_c, y_c = fetchRCV2()
+    
+    if dataset_option in set([1,2,3]):
+        X_c = tokenize(X_c, 'C') 
+        X_e = tokenize(X_e, 'E') 
+        saveMidOutput(X_e, X_c, y_e, y_c, dataset_option)
     
     # ==========================Model training==========================
     
-    model_option = 1  # 1 for traditional classifiers, 2 for CNN
+    X_e, X_c, y_e, y_c = loadMidOutput(3)
     
     if model_option == 1:
-        # English feature (average)
-        X_e = tokenizeEnglish(X_e)
-        w2v_en = loadWordVectors('data/wiki.en.align.vec', 100000)  
-        X_e = featurizeEnglish(X_e, w2v_en)
-           
-        # Chinese feature (average)
-        w2v_zh = loadWordVectors('data/wiki.zh.align.vec', 100000)  
-        X_c = featurizeChinese(X_c, w2v_zh)
-        
-        # English classifiers
-        X_train, X_test, y_train, y_test = train_test_split(X_e, y_e, test_size=0.33)
-        print("English training vectors for English testing vectors:")
-        classifiers(X_train, y_train, X_test, y_test)
-        
-        # Chinese classifiers
-        X_c_train, X_c_test, y_c_train, y_c_test = train_test_split(X_c, y_c, test_size=0.33)
-        print("Chinese training vectors for Chinese testing vectors:")
-        classifiers(X_c_train, y_c_train, X_c_test, y_c_test)
-        
-        # English classifiers to train Chinese vectors
-        print("English training vectors for Chinese testing vectors:")
-        classifiers(X_train, y_train, X_c, y_c)
-        
-        # Chinese classifiers to train English vectors
-        print("Chinese training vectors for English testing vectors:")
-        classifiers(X_c_train, y_c_train, X_e, y_e)
-        
+        average_traditional_classifiers([X_e, X_c], [y_e, y_c], [embed_file_en, embed_file_zh])
     elif model_option == 2:
-        CNNCross([X_e, X_c], [y_e, y_c], ['data/wiki.en.align.vec', 'data/wiki.zh.align.vec'])
-        
+        CNNCross([X_e, X_c], [y_e, y_c], [embed_file_en, embed_file_zh])
+
+
+class Logger(object):
+
+    def __init__(self, file_name):
+        self.terminal = sys.stdout
+        self.log = open(file_name, "a")
+
+    def write(self, message):
+        self.terminal.write(message)
+        self.log.write(message)  
+
+    def flush(self):
+        pass        
+
 
 if __name__ == '__main__':
     main()
-    # run only once to get output
+    # run once to get output saved in disk
 #     THUWordSegmentation()
 #     UMWordSegmentation(["Bi-Laws", "Bi-Thesis"], 100000)
+#     RCV2WordSegmentation()
+#     RCV2WordSegmentationTHU()

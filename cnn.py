@@ -12,9 +12,15 @@ def CNNCross(X, y, embeding):
     param: y list of list of target for 2 languages
     param: embedding, list of word embedding path for 2 languages
     return: Trained CNN and classifer on 2 languages"""    
-    
+    # CNN Model Hyperparameters
     maxlen = 100
     embedding_dim = 50
+    filter_sizes = (3, 4, 5)
+    num_filters = 100
+    dropout_prob = (0.5, 0.8)
+    hidden_dims = 50
+    batch_size = 64
+    num_epochs = 10
     
     def CNN(X_train, y_train, X_test, y_test, vocab_size, embedding_matrix):
         """param: vocab_size, number of unique words
@@ -62,9 +68,8 @@ def CNNCross(X, y, embeding):
     for i in range(len(X)):
         X_train[i], X_test[i], y_train[i], y_test[i] = train_test_split(X[i], y[i], test_size=0.33, random_state=1000)
 
-        tok[i] = Tokenizer(num_words=5000, filters='!"#$%&()*+,-./:;<=>?@[\\]^_`{|}~\t\n', lower=True, split=' ')
+        tok[i] = Tokenizer(split=' ')
         tok[i].fit_on_texts(X_train[i])
-    
         X_train[i] = tok[i].texts_to_sequences(X_train[i])
         X_test[i] = tok[i].texts_to_sequences(X_test[i])
         X_train[i] = pad_sequences(X_train[i], padding='post', maxlen=maxlen)
