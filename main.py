@@ -1,6 +1,6 @@
 import warnings
 import sys
-from preprocessing import fetch20newsgroup, fetchRCV2, fetchTHUnews, fetchUMCorpus, tokenize, saveMidOutput, loadMidOutput
+from preprocessing import fetch20newsgroup, fetchRCV2, fetchTHUnews, fetchUMCorpus, tokenize, saveMidOutput, loadMidOutput, RCV2WordSegmentationJieba
 from classifiers import average_traditional_classifiers
 # from cnn import CNNCross
 from test import CNNCross
@@ -12,10 +12,10 @@ def main():
     embed_file_en = 'data/wiki.en.align.vec'
     embed_file_zh = 'data/wiki.zh.align.vec'
     
-    dataset_option = 0  # 1 for 20NewsGroup&THU, 2 for UM-corpus, 3 for RCV2, else for skip
+    dataset_option = 3  # 1 for 20NewsGroup&THU, 2 for UM-corpus, 3 for RCV2, else for skip
     model_option = 2  # 1 for traditional classifiers, 2 for CNN, else for skip
     
-#     sys.stdout = Logger('output' + str(dataset_option) + str(model_option) + ".log")
+    sys.stdout = Logger('output' + str(dataset_option) + str(model_option) + ".log")
     
     # ==========================Data preprocessing==========================
     
@@ -58,15 +58,14 @@ class Logger(object):
     def write(self, message):
         self.terminal.write(message)
         self.log.write(message)  
-
     def flush(self):
         pass        
 
 
 if __name__ == '__main__':
-    main()
     # run once to get output saved in disk
 #     THUWordSegmentation()
 #     UMWordSegmentation(["Bi-Laws", "Bi-Thesis"], 100000)
-#     RCV2WordSegmentation()
+    RCV2WordSegmentationJieba()
 #     RCV2WordSegmentationTHU()
+    main()
