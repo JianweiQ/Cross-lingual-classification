@@ -6,6 +6,72 @@ from sklearn.datasets import fetch_20newsgroups
 from nltk.tokenize import RegexpTokenizer
 from nltk.stem import WordNetLemmatizer
 from sklearn.feature_extraction.text import TfidfVectorizer
+import matplotlib.pyplot as plt
+import numpy as np
+
+
+def countUniqueWords(docs, labels, k):
+    """
+    param:
+        docs: a list of strings
+        labels: a list of k integers (0...k-1), representing k labels/categories.
+            docs and labels should have the same length
+        k: int, the number of categories. k = 4 for reuters dataset
+    return:
+        nUniqueWords: a list of k numbers, each representing the number 
+            of unique words for docs in that category
+    """
+    uniqueWords = [set() for _ in range(k)]
+    for i in range(len(docs)):
+        doc = docs[i]
+        words = doc.strip().split()
+        for word in words:
+            if word not in uniqueWords[labels[i]]:
+                uniqueWords[labels[i]].add(word)
+    X_count = []
+    for i in range(k):
+        X_count.append(len(uniqueWords[i]))
+    print ("The number of unique words is:", X_count)
+    return X_count
+
+
+def countUniqueWordsbarplot(X_e_count, X_c_count, title):
+    """
+    param: X_e_count, English unique word count list
+    X_c_count, Chinese unique word count list
+    title, title of plot
+    return: bar plot
+    """
+    n_groups = 4
+     
+    # create plot
+    fig = plt.subplots()
+    index = np.arange(n_groups)
+    bar_width = 0.35
+    opacity = 0.8
+     
+    color_set = ["darkblue", "orangered"]
+     
+    en = plt.bar(index, X_e_count, bar_width,
+                     alpha=opacity,
+                     color=color_set[0],
+                     label='EN')
+     
+    zh = plt.bar(index + bar_width, X_c_count, bar_width,
+                     alpha=opacity,
+                     color=color_set[1],
+                     label='ZH')
+     
+    plt.xlabel('Topics')
+    plt.ylabel('Count')
+    plt.title(title)
+    plt.xticks(index + bar_width, ('CCAT', 'ECAT', 'GCAT', 'MCAT'))
+    plt.legend()
+     
+    plt.tight_layout()
+    plt.savefig('output/' + title + '.png')
+    plt.show()
+    
 
 
 def fetch20newsgroup(cat, subset):
