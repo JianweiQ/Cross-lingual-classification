@@ -1,0 +1,33 @@
+loadMidOutput...
+loadWordVectors:data/wiki.en.align.vec...
+2519370 300
+featurizing...
+The hit rate for words in embedding list is 0.9861289993049477
+loadWordVectors:data/wiki.zh.align.vec...
+332647 300
+featurizing...
+The hit rate for words in embedding list is 0.690919277230889
+EN-EN, LinearSVC:
+accuracy = 0.887
+[[846  50  27  68]
+ [ 35 856  57  52]
+ [ 27  27 972   4]
+ [ 36  61   8 874]]
+EN-ZH, LinearSVC:
+accuracy = 0.4538333333333333
+[[ 645   16    3 1123]
+ [  15   63    6 1717]
+ [  19   26  173  347]
+ [   4    1    0 1842]]
+ZH-ZH, LinearSVC:
+accuracy = 0.8635
+[[ 980  123   17   49]
+ [ 105 1035   31   44]
+ [  24   45  293    1]
+ [  29   73    5 1146]]
+ZH-EN, LinearSVC:
+accuracy = 0.5863333333333334
+[[1404    0    3   82]
+ [1066   21   52  333]
+ [ 304    1 1060  183]
+ [ 456    0    2 1033]]

@@ -3,6 +3,8 @@ The number of unique words is:
 [33068, 29276, 55586, 35701]
 The number of unique words is:
 [22746, 19507, 8922, 29704]
+EN Documents count is  Counter({2: 1548, 3: 1491, 0: 1489, 1: 1472})
+ZH Documents count is  Counter({3: 1847, 1: 1801, 0: 1787, 2: 565})
 loadMidOutput...
 The number of unique words is:
 [8719, 8560, 12040, 8219]

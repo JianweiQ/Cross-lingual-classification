@@ -35,10 +35,10 @@ def countUniqueWords(docs, labels, k):
     return X_count
 
 
-def countUniqueWordsbarplot(X_e_count, X_c_count, title):
+def countbarplot(X_e_count, X_c_count, title):
     """
-    param: X_e_count, English unique word count list
-    X_c_count, Chinese unique word count list
+    param: X_e_count, English count list
+    X_c_count, Chinese count list
     title, title of plot
     return: bar plot
     """
@@ -72,7 +72,6 @@ def countUniqueWordsbarplot(X_e_count, X_c_count, title):
     plt.savefig('output/' + title + '.png')
     plt.show()
     
-
 
 def fetch20newsgroup(cat, subset):
     """ param: cat, a list of categories
@@ -340,3 +339,44 @@ def loadMidOutput(dataset_option):
     load(X_c, "X_c", 1)
     load(y_c, "y_c", 0)
     return (X_e, X_c, y_e, y_c)
+
+
+def plot_confusion_matrices(matrices, titles, classes=['CCAT', 'ECAT', 'GCAT', 'MCAT']):
+    """
+    Plot many confusion matrices and organize them in a single figure
+    matrices: a list of confusion matrices, the length must be a multiple of 4
+    classes: a list of class labels, e.g., ['CCAT', 'ECAT', 'GCAT', 'MCAT']
+    ['Corporate','Economics','Government','Markets']
+    titles: a list of titles, each for a confusion matrix
+    """
+
+    fig, axes = plt.subplots(len(matrices)//4, 4)
+    whichMatrix = 0
+    for i in range(len(matrices)//4):
+        for j in range(4):
+            im = axes[i, j].imshow(matrices[whichMatrix], interpolation='nearest', cmap=plt.cm.Blues)
+            axes[i, j].figure.colorbar(im, ax=axes[i, j])
+            # We want to show all ticks...
+            axes[i, j].set(xticks=np.arange(matrices[whichMatrix].shape[1]),
+                   yticks=np.arange(matrices[whichMatrix].shape[0]),
+                   # ... and label them with the respective list entries
+                   xticklabels=classes, yticklabels=classes,
+                   title=titles[whichMatrix],
+                   ylabel='True label',
+                   xlabel='Predicted label')
+
+            # Rotate the tick labels and set their alignment.
+            plt.setp(axes[i, j].get_xticklabels(), rotation=45, ha="right",
+                     rotation_mode="anchor")
+
+            # Loop over data dimensions and create text annotations.
+            fmt = 'd' #'.2f' if normalize else 'd'
+            thresh = matrices[whichMatrix].max() / 2.
+            for ii in range(matrices[whichMatrix].shape[0]):
+                for jj in range(matrices[whichMatrix].shape[1]):
+                    axes[i, j].text(jj, ii, format(matrices[whichMatrix][ii, jj], fmt),
+                            ha="center", va="center",
+                            color="white" if matrices[whichMatrix][ii, jj] > thresh else "black")
+            fig.tight_layout()
+            whichMatrix += 1
+    return axes

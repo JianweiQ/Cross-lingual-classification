@@ -1,11 +1,8 @@
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import accuracy_score
 from sklearn.svm import LinearSVC
-from sklearn.ensemble import ExtraTreesClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split
-import io
 import numpy as np
+import io
 
 
 def average_traditional_classifiers(X, y, embeding):
@@ -31,31 +28,25 @@ def average_traditional_classifiers(X, y, embeding):
     w2v = loadWordVectors(embed_file_zh)  
     X_c = featurize(X_c, w2v, embed_dim)
      
-    # English classifiers
-    X_train, X_test, y_train, y_test = train_test_split(X_e, y_e, test_size=0.33)
-    print("English training vectors for English testing vectors:")
-    classifiers(X_train, y_train, X_test, y_test)
+    X_train = np.concatenate((X_e[:1000], X_e[5000:]), axis=0)
+    y_train = np.concatenate((y_e[:1000], y_e[5000:]), axis=0)
+    X_test, y_test = X_e[1000:5000], y_e[1000:5000]
+    X_c_train = np.concatenate((X_c[:1000], X_c[5000:]), axis=0)
+    y_c_train = np.concatenate((y_c[:1000], y_c[5000:]), axis=0)
+    X_c_test, y_c_test = X_c[1000:5000], y_c[1000:5000]
      
-    # Chinese classifiers
-    X_c_train, X_c_test, y_c_train, y_c_test = train_test_split(X_c, y_c, test_size=0.33)
-    print("Chinese training vectors for Chinese testing vectors:")
-    classifiers(X_c_train, y_c_train, X_c_test, y_c_test)
-     
-    # English classifiers to train Chinese vectors
-    print("English training vectors for Chinese testing vectors:")
-    classifiers(X_train, y_train, X_c, y_c)
-     
-    # Chinese classifiers to train English vectors
-    print("Chinese training vectors for English testing vectors:")
-    classifiers(X_c_train, y_c_train, X_e, y_e)
+    classifiers(X_train, y_train, X_test, y_test, "EN-EN")
+    classifiers(X_train, y_train, X_c, y_c, "EN-ZH")
+    classifiers(X_c_train, y_c_train, X_c_test, y_c_test, "ZH-ZH")
+    classifiers(X_c_train, y_c_train, X_e, y_e, "ZH-EN")
 
 
-def classifiers(X_train, y_train, X_test, y_test):
+def classifiers(X_train, y_train, X_test, y_test, msg):
     """param: X_train, y_train are feature vectors for training
     param: X_test, y_test are feature vectors for testing"""
 
     def classifier(clf, clf_name):
-        print(clf_name + ":")
+        print(msg + ", " + clf_name + ":")
         clf.fit(X_train, y_train)
         y2_pred = clf.predict(X_test)
         print("accuracy =", accuracy_score(y_test, y2_pred))
@@ -63,8 +54,8 @@ def classifiers(X_train, y_train, X_test, y_test):
         print(confusion_matrix(y_test, y2_pred))
         
     classifier(LinearSVC(), "LinearSVC")
-    classifier(ExtraTreesClassifier(), "ExtraTreesClassifier")
-    classifier(LogisticRegression(), "LogisticRegression")
+#     classifier(ExtraTreesClassifier(), "ExtraTreesClassifier")
+#     classifier(LogisticRegression(), "LogisticRegression")
 #     classifier(BernoulliNB(), "BernoulliNB")
 #     classifier(MultinomialNB(), "MultinomialNB")
 

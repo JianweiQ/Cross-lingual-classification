@@ -4,7 +4,6 @@ from keras.models import Model
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
 from keras.utils import to_categorical
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix
 import matplotlib.pylab as plt
 import numpy as np
@@ -26,8 +25,9 @@ def CNNCross(X, y, embeding):
     dropout_prob = (0.5, 0.8)
     hidden_dims = 50
     batch_size = 64
-    num_epochs = 10
+    num_epochs = 50
     sequence_length = 400
+    verbose = False
     
     def build_model(model_type, vocabulary_size=0, embed_matrix=None):
         number_of_class = 4
@@ -65,49 +65,73 @@ def CNNCross(X, y, embeding):
         model.compile(loss="binary_crossentropy", optimizer="adam", metrics=["accuracy"])
         return model
     
-    def train_model(model, X_train, y_train, X_test, y_test, train, test, model_type):
+    def train_model(model, X_train, y_train, X_test, y_test, X_val, y_val, train, test, model_type):
         msg = "Calculating " + train + "-" + test + " accuracy (" + model_type + "):"
         print(msg)
-        verbose = False
         history = model.fit(X_train, y_train, batch_size=batch_size, epochs=num_epochs, verbose=verbose,
-                            validation_data=(X_test, y_test))
-        print("In sample accuracy: ")
+                            validation_data=(X_val, y_val))
+        
+        print("Training accuracy: ")
         print([float(Decimal("%.4f" % e)) for e in history.history['acc']])
-        print("Out of sample accuracy: ")
+#         print("Training loss: ")
+#         print([float(Decimal("%.4f" % e)) for e in history.history['loss']])
+        print("Validation accuracy: ")
         print([float(Decimal("%.4f" % e)) for e in history.history['val_acc']])
-        predictions = model.predict(X_test)
+#         print("Validation loss: ")
+#         print([float(Decimal("%.4f" % e)) for e in history.history['val_loss']])
+        predictions = model.predict(X_test, batch_size=batch_size, verbose=verbose)
+        loss, accuracy = model.evaluate(X_test, y_test, batch_size=batch_size, verbose=verbose)
+        print("Testing accuracy: ", accuracy)
+#         print("Testing loss: ", loss)
         matrix = confusion_matrix(y_test.argmax(axis=1), predictions.argmax(axis=1))
         print("Confusion matrix:")
         print(matrix)
-        return (history, matrix)
+        return (history, matrix, accuracy)
     
     def plot_model(model_type, ret, label):
         history = [item[0] for item in ret] 
         confusion_matrix = [item[1] for item in ret] 
-        plot_accuracy_history(history, label, model_type + " out of sample accuracy")
+        plot_accuracy_history(history, label, model_type + " accuracy")
+
+    def tokenize_sequence(tok, X):
+        X = tok.texts_to_sequences(X)
+        X = pad_sequences(X, padding='post', maxlen=sequence_length)
+        return X
 
     # Data prepare
-    X_train, X_test, y_train, y_test, X_train_static, X_test_static, tok, em, v = [0] * 2, [0] * 2, [0] * 2, [0] * 2, [0] * 2, [0] * 2, [0] * 2, [0] * 2, [0] * 2
+    X_train, X_test, X_val, y_train, y_test, y_val = ([0] * 2 for i in range(6))
+    X_train_static, X_test_static, X_val_static = ([0] * 2 for i in range(3))
+    tok, em, v = ([0] * 2 for i in range(3))
     
     for i in range(2):
-        X_train[i], X_test[i], y_train[i], y_test[i] = train_test_split(X[i], y[i], test_size=0.33, random_state=1000)
+        # develop 1000 test 4000 train 1000 in Facebook
+        X_train[i], y_train[i] = X[i][:1000], y[i][:1000]
+        X_test[i], y_test[i] = X[i][1000:5000], y[i][1000:5000]
+        X_val[i], y_val[i] = X[i][5000:], y[i][5000:]
+#         X_test[i], y_train[i], y_test[i] = train_test_split(X[i], y[i], test_size=0.33, random_state=1000)
+#         X_train[i], X_test[i], y_train[i], y_test[i] = train_test_split(X[i], y[i], test_size=0.33, random_state=1000)
 
         tok[i] = Tokenizer(split=' ')
         tok[i].fit_on_texts(X_train[i])
-    
-        X_train[i] = tok[i].texts_to_sequences(X_train[i])
-        X_test[i] = tok[i].texts_to_sequences(X_test[i])
-        X_train[i] = pad_sequences(X_train[i], padding='post', maxlen=sequence_length)
-        X_test[i] = pad_sequences(X_test[i], padding='post', maxlen=sequence_length)
-        em[i] = create_embedding_matrix(embeding[i], tok[i].word_index, embedding_dim)  # , 100000)
+        
+        X_train[i] = tokenize_sequence(tok[i], X_train[i])
+        X_test[i] = tokenize_sequence(tok[i], X_test[i])
+        X_val[i] = tokenize_sequence(tok[i], X_val[i])
+        
+        em[i] = create_embedding_matrix(embeding[i], tok[i].word_index, embedding_dim , 100000)
+        
         v[i] = len(tok[i].word_index) + 1
         y_train[i] = to_categorical(y_train[i])
-        y_test[i] = to_categorical(y_test[i])    
+        y_test[i] = to_categorical(y_test[i])   
+        y_val[i] = to_categorical(y_val[i])
+        
         if model_type == "CNN-static" or "both":
             X_train_static[i] = np.stack([np.stack([em[i][word] for word in sentence]) for sentence in X_train[i]])
             X_test_static[i] = np.stack([np.stack([em[i][word] for word in sentence]) for sentence in X_test[i]])
+            X_val_static[i] = np.stack([np.stack([em[i][word] for word in sentence]) for sentence in X_val[i]])
             print("X_train static shape: " , X_train_static[i].shape)
             print("X_test static shape: " , X_test_static[i].shape)
+            print("X_val static shape: " , X_val_static[i].shape)
     
     lang = ["EN", "ZH"]
     ret = []
@@ -119,10 +143,10 @@ def CNNCross(X, y, embeding):
         for i in range(2):
             j = 1 - i
             ret.append(train_model(model, X_train_static[i], y_train[i], X_test_static[i], y_test[i],
-                                              lang[i], lang[i], model_type_s))
+                                              X_val_static[i], y_val[i], lang[i], lang[i], model_type_s))
             label.append(lang[i] + "-" + lang[i])
             ret.append(train_model(model, X_train_static[i], y_train[i], X_test_static[j], y_test[j],
-                                              lang[i], lang[j], model_type_s))
+                                              X_val_static[i], y_val[i], lang[i], lang[j], model_type_s))
             label.append(lang[i] + "-" + lang[j])
         
         plot_model(model_type_s, ret, label)
@@ -133,14 +157,14 @@ def CNNCross(X, y, embeding):
             j = 1 - i
             model = build_model(model_type_s, v[i], em[i])
             ret.append(train_model(model, X_train[i], y_train[i], X_test[i], y_test[i],
-                                          lang[i], lang[i], model_type_s))
+                                          X_val[i], y_val[i], lang[i], lang[i], model_type_s))
             
             model = build_model(model_type_s, v[i] + v[j], np.concatenate((em[i], em[j]), axis=0))
             X_test_shift = np.copy(X_test[j])
             for item in X_test_shift:
                 item += v[i]
             ret.append(train_model(model, X_train[i], y_train[i], X_test_shift, y_test[j],
-                                           lang[i], lang[j], model_type_s))
+                                           X_val[i], y_val[i], lang[i], lang[j], model_type_s))
         
         plot_model(model_type_s, ret[4:], label)
 
@@ -171,19 +195,26 @@ def create_embedding_matrix(filepath, word_index, embedding_dim, size=float('inf
 
 
 def plot_accuracy_history(history, label, title):
-#     plt.style.use('ggplot')
+    
     color_set = ["darkblue", "darkblue", "orangered", "orangered"]
     linestyles = ['--', '-' , '--', '-']
+    x = range(1, len(history[0].history['val_acc']) + 1)
+    
+    def plot(y, msg):
+        for i in range(len(label)):
+            plt.plot(x, history[i].history[y], color_set[i], label=label[i], linestyle=linestyles[i])
+        plt.xlabel('Epoch')
+        plt.ylabel('Accuracy')
+        plt.title(title + msg)
+        plt.legend(loc=4)  # bottom right
+        plt.savefig('output/' + title + msg + '.png')
+        plt.show()
+        plt.clf()
+    
+    plot('acc', " (training)")
+    plot('val_acc', " (validation)")
+    
 #     val_acc = history.history['val_acc']
 #     loss = history.history['loss']
 #     val_loss = history.history['val_loss']
-    x = range(1, len(history[0].history['val_acc']) + 1)
-#     plt.figure(figsize=(12, 5))
-    for i in range(len(label)):
-        plt.plot(x, history[i].history['val_acc'], color_set[i], label=label[i], linestyle=linestyles[i])
-    plt.xlabel('Epoch')
-    plt.ylabel('Accuracy')
-    plt.title(title)
-    plt.legend(loc=4)  # bottom right
-    plt.savefig('output/' + title + '.png')
-    plt.show()
+
