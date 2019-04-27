@@ -1,9 +1,10 @@
 import warnings
 import sys
-from collections import Counter
+from datetime import datetime
 from preprocessing import *
 from classifiers import average_traditional_classifiers
 from cnn import CNNCross
+from plot import *
 
 
 def main():
@@ -13,58 +14,72 @@ def main():
     embed_file_zh = 'data/wiki.zh.align.vec'
     
     dataset_option = 3  # 1 for 20NewsGroup&THU, 2 for UM-corpus, 3 for RCV2, else for skip
-    model_option = 2  # 1 for traditional classifiers, 2 for CNN, else for skip
+    model_option = 2  # 1 for traditional classifiers, 2 for CNN, 0 for both, else for skip
     
     sys.stdout = Logger('output/output' + str(dataset_option) + str(model_option) + ".log")
+    start = datetime.now()
+    print("==========================Main Start: " , start , "==========================")
     
     # ==========================Data preparation==========================
      
-    # load data
-    if dataset_option == 1:
-        cat = ['rec.sport.baseball', 'talk.politics.misc', 'sci.electronics'] 
-#         cat = ['rec.sport.baseball', 'rec.sport.hockey',
-#                'talk.politics.mideast', 'talk.politics.guns', 'talk.politics.misc',
-#                'sci.crypt', 'sci.electronics', 'sci.med', 'sci.space'] 
-        dataset = fetch20newsgroup(cat, "all")
-        X_e = dataset.data
-        y_e = dataset.target
-#         y_e = relabel20newsgroup(y_e)
-        X_c, y_c = fetchTHUnews(1000)
-    elif dataset_option == 2:
-        X_e, y_e, X_c, y_c = fetchUMCorpus()
-    elif dataset_option == 3:
-        X_e, y_e, X_c, y_c = fetchRCV2()
-      
-    X_e_count = countUniqueWords(X_e, y_e, 4)
-    X_c_count = countUniqueWords(X_c, y_c, 4)
-    y_e_count = Counter(y_e)
-    y_c_count = Counter(y_c)
-    print("EN Documents count is ", y_e_count)
-    print("ZH Documents count is ", y_c_count)
-    countbarplot(X_e_count, X_c_count, "Unique words count before pre-processing")
-    countbarplot(y_e_count.values(), y_c_count.values(), "Documents count")
+#     # load data
+#     if dataset_option == 1:
+#         cat = ['rec.sport.baseball', 'talk.politics.misc', 'sci.electronics'] 
+# #         cat = ['rec.sport.baseball', 'rec.sport.hockey',
+# #                'talk.politics.mideast', 'talk.politics.guns', 'talk.politics.misc',
+# #                'sci.crypt', 'sci.electronics', 'sci.med', 'sci.space'] 
+#         dataset = fetch20newsgroup(cat, "all")
+#         X_e = dataset.data
+#         y_e = dataset.target
+# #         y_e = relabel20newsgroup(y_e)
+#         X_c, y_c = fetchTHUnews(1000)
+#     elif dataset_option == 2:
+#         X_e, y_e, X_c, y_c = fetchUMCorpus()
+#     elif dataset_option == 3:
+#         X_e, y_e, X_c, y_c = fetchRCV2()
+#       
+#     X_e_count = countUniqueWords(X_e, y_e, 4)
+#     X_c_count = countUniqueWords(X_c, y_c, 4)
+#     y_e_count = Counter(y_e)
+#     y_c_count = Counter(y_c)
+#     print("EN Documents count is ", y_e_count)
+#     print("ZH Documents count is ", y_c_count)
+#     plot_bar_chart_count(X_e_count, X_c_count, "Unique words count before pre-processing")
+#     plot_bar_chart_count(y_e_count.values(), y_c_count.values(), "Documents count")
      
     # data pre-processing
      
-    if dataset_option in set([1,2,3]):
-        X_c = tokenize(X_c, 'C') 
-        X_e = tokenize(X_e, 'E') 
-        saveMidOutput(X_e, X_c, y_e, y_c, dataset_option)
+#     if dataset_option in set([1,2,3]):
+#         X_c = tokenize(X_c, 'C') 
+#         X_e = tokenize(X_e, 'E') 
+#         saveMidOutput(X_e, X_c, y_e, y_c, dataset_option)
     
     # ==========================Model training==========================
     
     X_e, X_c, y_e, y_c = loadMidOutput(3)
-    
-    X_e_count = countUniqueWords(X_e, y_e, 4)
-    X_c_count = countUniqueWords(X_c, y_c, 4)
-    countbarplot(X_e_count, X_c_count, "Unique words count after pre-processing")
-    
+     
+#     X_e_count = countUniqueWords(X_e, y_e, 4)
+#     X_c_count = countUniqueWords(X_c, y_c, 4)
+#     plot_bar_chart_count(X_e_count, X_c_count, "Unique words count after pre-processing")
+     
     if model_option == 1:
         average_traditional_classifiers([X_e, X_c], [y_e, y_c], [embed_file_en, embed_file_zh])
     elif model_option == 2:
         CNNCross([X_e, X_c], [y_e, y_c], [embed_file_en, embed_file_zh])
+    elif model_option == 0:  # both
+        svc = average_traditional_classifiers([X_e, X_c], [y_e, y_c], [embed_file_en, embed_file_zh])
+        cnn = CNNCross([X_e, X_c], [y_e, y_c], [embed_file_en, embed_file_zh])
+        matrices = []
+        for item in svc:
+            matrices.append(item[1])
+        for item in cnn:
+            matrices.append(item[1])
+        plot_confusion_matrices(matrices, "Confusion Matrices for SVC and CNN")
 
+    duartion = (datetime.now() - start).total_seconds()
+    print("==========================Main Takes(s): " , duartion , "==========================")
 
+    
 class Logger(object):
 
     def __init__(self, file_name):
@@ -74,6 +89,7 @@ class Logger(object):
     def write(self, message):
         self.terminal.write(message)
         self.log.write(message)  
+
     def flush(self):
         pass        
 

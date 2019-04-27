@@ -1,6 +1,7 @@
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import accuracy_score
 from sklearn.svm import LinearSVC
+from plot import compute_precision_recall_F1
 import numpy as np
 import io
 
@@ -35,10 +36,12 @@ def average_traditional_classifiers(X, y, embeding):
     y_c_train = np.concatenate((y_c[:1000], y_c[5000:]), axis=0)
     X_c_test, y_c_test = X_c[1000:5000], y_c[1000:5000]
      
-    classifiers(X_train, y_train, X_test, y_test, "EN-EN")
-    classifiers(X_train, y_train, X_c, y_c, "EN-ZH")
-    classifiers(X_c_train, y_c_train, X_c_test, y_c_test, "ZH-ZH")
-    classifiers(X_c_train, y_c_train, X_e, y_e, "ZH-EN")
+    ret = []
+    ret.append(classifiers(X_train, y_train, X_test, y_test, "EN-EN"))
+    ret.append(classifiers(X_train, y_train, X_c, y_c, "EN-ZH"))
+    ret.append(classifiers(X_c_train, y_c_train, X_c_test, y_c_test, "ZH-ZH"))
+    ret.append(classifiers(X_c_train, y_c_train, X_e, y_e, "ZH-EN"))
+    return ret
 
 
 def classifiers(X_train, y_train, X_test, y_test, msg):
@@ -46,14 +49,19 @@ def classifiers(X_train, y_train, X_test, y_test, msg):
     param: X_test, y_test are feature vectors for testing"""
 
     def classifier(clf, clf_name):
-        print(msg + ", " + clf_name + ":")
+        print("\n" + msg + ", " + clf_name + ":")
         clf.fit(X_train, y_train)
-        y2_pred = clf.predict(X_test)
-        print("accuracy =", accuracy_score(y_test, y2_pred))
+        y_pred = clf.predict(X_test)
+        accuracy = accuracy_score(y_test, y_pred)
+        print("accuracy =", accuracy)
+        compute_precision_recall_F1(y_pred, y_test, 4)
         # row for true label and column for predicted label
-        print(confusion_matrix(y_test, y2_pred))
+        matrix = confusion_matrix(y_test, y_pred)
+        print(matrix)
+        return (y_pred, matrix)
         
-    classifier(LinearSVC(), "LinearSVC")
+    ret = classifier(LinearSVC(), "LinearSVC")
+    return ret
 #     classifier(ExtraTreesClassifier(), "ExtraTreesClassifier")
 #     classifier(LogisticRegression(), "LogisticRegression")
 #     classifier(BernoulliNB(), "BernoulliNB")
@@ -76,7 +84,9 @@ def featurize(docs, w2v, dim=300):
             count += 1
             if word in w2v:
                 l.append(w2v[word])
-                hit += 1           
+                hit += 1  
+#             else:
+#                 print(word)         
         retl.append(np.mean(l or np.zeros(dim), axis=0))
     print("The hit rate for words in embedding list is " + str(hit / count))
     return np.array(retl)
@@ -86,7 +96,7 @@ def loadWordVectors(fname, size=float('inf')):
     """param: fname, file name of word embeddings
     size: for max loaded lines restriction
     return: a dictionary storing the embeddings"""
-    print('loadWordVectors:' + fname + '...')
+    print('\nloadWordVectors:' + fname + '...')
     fin = io.open(fname, 'r', encoding='utf-8', newline='\n', errors='ignore')
     n, d = map(int, fin.readline().split())
     print(n, d)  # n is #words, d is dimension
