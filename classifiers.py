@@ -1,7 +1,6 @@
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, classification_report
 from sklearn.metrics import accuracy_score
 from sklearn.svm import LinearSVC
-from plot import compute_precision_recall_F1
 import numpy as np
 import io
 
@@ -54,7 +53,8 @@ def classifiers(X_train, y_train, X_test, y_test, msg):
         y_pred = clf.predict(X_test)
         accuracy = accuracy_score(y_test, y_pred)
         print("accuracy =", accuracy)
-        compute_precision_recall_F1(y_pred, y_test, 4)
+        print(classification_report(y_test, y_pred, target_names=['CCAT', 'ECAT', 'GCAT', 'MCAT']))
+#         compute_precision_recall_F1(y_pred, y_test, 4)
         # row for true label and column for predicted label
         matrix = confusion_matrix(y_test, y_pred)
         print(matrix)

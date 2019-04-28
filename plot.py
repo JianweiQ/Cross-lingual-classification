@@ -1,33 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from collections import Counter
 
-def compute_precision_recall_F1(predictions, y, numOfClass):
-    """ compute precision, recall, and F1 over each class and then average them
-    param: predictions and y are two lists of the same length with values from [0,numOfClass-1]
-        numOfClass is the number of distinct classes
-    return: a tuple of (precision, recall, F1)
-    """
-    precisions = []
-    recalls = []
-    f1Scores = []
-    countPred = Counter(predictions)
-    countY = Counter(y)
-    for i in range(numOfClass):
-        # focus on class i
-        truePos = 0
-        for j in range(len(y)):
-            if predictions[j] == y[j] == i: truePos += 1 
-        p = 1 if countPred[i] == 0 else truePos / countPred[i]
-        r = 1 if countY[i] == 0 else truePos / countY[i]
-        precisions.append(p)
-        recalls.append(r)
-        f1Scores.append(2*p*r / (p+r))
-    print("Precision for each class:", precisions, "Average:", np.mean(precisions))
-    print("Recall for each class:", recalls, "Average:", np.mean(recalls))
-    print("F1 score for each class:", f1Scores, "Average:", np.mean(f1Scores))
-    return np.mean(precisions), np.mean(recalls), np.mean(f1Scores)
-    
 
 def plot_bar_chart_count(X_e_count, X_c_count, title):
     """
@@ -64,7 +37,7 @@ def plot_bar_chart_count(X_e_count, X_c_count, title):
      
     plt.tight_layout()
     plt.savefig('output/' + title + '.png')
-    plt.show()
+#     plt.show()
 
 
 def plot_confusion_matrices(matrices, titles, classes=['C', 'E', 'G', 'M']):
@@ -115,20 +88,19 @@ def plot_cnn_accuracy_history(history, label, title):
     label: language pair label e.g.ZH-EH
     title: title of graph
     """
-    color_set = ["darkblue", "orangered", "orangered", "orangered"]
-#     linestyles = ['--', '-' , '--', '-']
+    color_set = ["darkblue", "orangered"]
     x = range(1, len(history[0].history['val_acc']) + 1)
     
     def plot(y, msg):
         for i in range(len(label)):
-            plt.plot(x, history[i].history[y+'acc'], color_set[i], label=label[i]+"_Accuracy", linestyle='-')
-            plt.plot(x, history[i].history[y+'loss'], color_set[i], label=label[i]+"_Loss", linestyle='--')
-        plt.xlabel('Epoch')
+            plt.plot(x, history[i].history[y + 'acc'], color_set[i], label=label[i] + "_Accuracy", linestyle='-')
+            plt.plot(x, history[i].history[y + 'loss'], color_set[i], label=label[i] + "_Loss", linestyle='--')
+        plt.xlabel('Training Steps')
         plt.ylabel('Accuracy/Loss')
         plt.title(title + msg)
         plt.legend(loc=4)  # bottom right
         plt.savefig('output/' + title + msg + '.png')
-        plt.show()
+#         plt.show()
         plt.clf()
     
     plot('', " (training)")
@@ -137,34 +109,65 @@ def plot_cnn_accuracy_history(history, label, title):
     
 def main():
     
-    pre = [0,0,0,0,2,2,3,3]
-    y = [1,1,1,1,2,2,3,3]
-    print(compute_precision_recall_F1(pre,y,4))
-
     # confusion matrix
-    matrices = [[[846, 50, 27, 68], [35, 856, 57, 52], [27, 27, 972, 4], [36, 61, 8, 874]],
-    [[645, 16, 3, 1123], [15, 63, 6, 1717], [19, 26, 173, 347], [4, 1, 0, 1842]],
-    [[980, 123, 17, 49], [105, 1035, 31, 44], [24, 45, 293, 1], [29, 73, 5, 1146]],
-    [[1404, 0, 3, 82], [1066, 21, 52, 333], [304, 1, 1060, 183], [456, 0, 2, 1033]],
-    [[288, 546, 42, 115], [9, 960, 20, 11], [16, 152, 839, 23], [45, 340, 7, 587]],
-    [[65, 46, 3, 1055], [2, 79, 1, 1133], [1, 101, 41, 220], [0, 27, 0, 1226]],
-    [[908, 179, 28, 54], [99, 973, 32, 111], [31, 100, 226, 6], [36, 105, 4, 1108]],
-    [[231, 502, 29, 229], [10, 913, 10, 67], [3, 298, 324, 405], [8, 270, 0, 701]],
-    [[773, 105, 35, 78], [28, 910, 30, 32], [69, 39, 922, 0], [35, 75, 1, 868]],
-    [[295, 42, 10, 822], [103, 25, 5, 1082], [178, 41, 38, 106], [22, 13, 0, 1218]],
-    [[1007, 106, 44, 12], [89, 1094, 11, 21], [55, 95, 207, 6], [19, 75, 14, 1145]],
-    [[5, 900, 9, 77], [0, 899, 3, 98], [0, 513, 3, 514], [0, 585, 1, 393]]]
+    matrices = [np.asarray([[846, 50, 27, 68],
+       [ 35, 856, 57, 52],
+       [ 27, 27, 972, 4],
+       [ 36, 61, 8, 874]]), np.asarray([[ 645, 16, 3, 1123],
+       [  15, 63, 6, 1717],
+       [  19, 26, 173, 347],
+       [   4, 1, 0, 1842]]), np.asarray([[ 980, 123, 17, 49],
+       [ 105, 1035, 31, 44],
+       [  24, 45, 293, 1],
+       [  29, 73, 5, 1146]]), np.asarray([[1404, 0, 3, 82],
+       [1066, 21, 52, 333],
+       [ 304, 1, 1060, 183],
+       [ 456, 0, 2, 1033]]), np.asarray([[854, 56, 8, 73],
+       [ 44, 905, 8, 43],
+       [ 46, 83, 891, 10],
+       [ 44, 68, 0, 867]]), np.asarray([[ 427, 133, 0, 609],
+       [  17, 373, 0, 825],
+       [  12, 258, 43, 50],
+       [   3, 30, 0, 1220]]), np.asarray([[ 955, 144, 53, 17],
+       [  97, 1031, 57, 30],
+       [  19, 30, 314, 0],
+       [  38, 90, 8, 1117]]), np.asarray([[646, 126, 2, 217],
+       [130, 686, 2, 182],
+       [ 62, 337, 45, 586],
+       [ 54, 71, 0, 854]]), np.asarray([[871, 47, 27, 46],
+       [ 42, 883, 42, 33],
+       [ 23, 17, 989, 1],
+       [ 47, 55, 2, 875]]), np.asarray([[ 624, 7, 30, 508],
+       [ 113, 103, 90, 909],
+       [  33, 33, 277, 20],
+       [  38, 13, 12, 1190]]), np.asarray([[1020, 105, 23, 21],
+       [  88, 1100, 6, 21],
+       [  35, 79, 249, 0],
+       [  24, 72, 3, 1154]]), np.asarray([[523, 360, 3, 105],
+       [ 60, 863, 3, 74],
+       [ 38, 377, 44, 571],
+       [ 64, 376, 1, 538]])]
+#     [[[846, 50, 27, 68], [35, 856, 57, 52], [27, 27, 972, 4], [36, 61, 8, 874]],
+#     [[645, 16, 3, 1123], [15, 63, 6, 1717], [19, 26, 173, 347], [4, 1, 0, 1842]],
+#     [[980, 123, 17, 49], [105, 1035, 31, 44], [24, 45, 293, 1], [29, 73, 5, 1146]],
+#     [[1404, 0, 3, 82], [1066, 21, 52, 333], [304, 1, 1060, 183], [456, 0, 2, 1033]],
+#     [[288, 546, 42, 115], [9, 960, 20, 11], [16, 152, 839, 23], [45, 340, 7, 587]],
+#     [[65, 46, 3, 1055], [2, 79, 1, 1133], [1, 101, 41, 220], [0, 27, 0, 1226]],
+#     [[908, 179, 28, 54], [99, 973, 32, 111], [31, 100, 226, 6], [36, 105, 4, 1108]],
+#     [[231, 502, 29, 229], [10, 913, 10, 67], [3, 298, 324, 405], [8, 270, 0, 701]],
+#     [[773, 105, 35, 78], [28, 910, 30, 32], [69, 39, 922, 0], [35, 75, 1, 868]],
+#     [[295, 42, 10, 822], [103, 25, 5, 1082], [178, 41, 38, 106], [22, 13, 0, 1218]],
+#     [[1007, 106, 44, 12], [89, 1094, 11, 21], [55, 95, 207, 6], [19, 75, 14, 1145]],
+#     [[5, 900, 9, 77], [0, 899, 3, 98], [0, 513, 3, 514], [0, 585, 1, 393]]]
     
     matrices = np.asarray(matrices)
     
     np.set_printoptions(precision=2)
-    plot_confusion_matrices(matrices, titles=
-    [
-    'LinearSVC,E-E', 'LinearSVC,E-C', 'LinearSVC,C-C', 'LinearSVC,C-E',
-    'CNN-static,E-E', 'CNN-static,E-C', 'CNN-static,C-C', 'CNN-static,C-E',
-    'CNN-non-st,E-E', 'CNN-non-st,E-C', 'CNN-non-static,C-C', 'CNN-non-static,C-E',
-     ])
-    
+    plot_confusion_matrices(matrices, titles=[
+        'LinearSVC,EN-EN', 'LinearSVC,EN-ZH', 'LinearSVC,ZH-ZH', 'LinearSVC,ZH-EN',
+        'CNN-static,EN-EN', 'CNN-static,EN-ZH', 'CNN-static,ZH-ZH', 'CNN-static,ZH-EN',
+        'CNN-non-st,EN-EN', 'CNN-non-st,EN-ZH', 'CNN-non-static,ZH-ZH', 'CNN-non-static,ZH-EN',
+         ])
 
 
 if __name__ == '__main__':

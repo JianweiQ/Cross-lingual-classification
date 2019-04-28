@@ -24,12 +24,14 @@ from keras.models import Model
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
 from keras.utils import to_categorical
-from sklearn.metrics import confusion_matrix
-from plot import plot_cnn_accuracy_history, compute_precision_recall_F1
+from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
+from sklearn.base import BaseEstimator
+from sklearn.model_selection import GridSearchCV
+from plot import plot_cnn_accuracy_history
 from decimal import Decimal
 
 
-class TextCNN(object):
+class TextCNN(BaseEstimator):
     """CNN class with build model in __init__, training model, predicting model functions"""
 
     def __init__(self,
@@ -42,30 +44,40 @@ class TextCNN(object):
         embed_matrix=None,
         ):
         
+        self.model_type = model_type
+        self.embedding_dim = embedding_dim
+        self.filter_sizes = filter_sizes
+        self.num_filters = num_filters
+        self.dropout_prob = dropout_prob
+        self.hidden_dims = hidden_dims
+        self.sequence_length = sequence_length
         self.batch_size = batch_size
         self.num_epochs = num_epochs
         self.verbose = verbose
-
+        self.embed_matrix = embed_matrix
+        self.model = self.build()
+        
+    def build(self):
         # Build model
         number_of_class = 4
-        print("\nBuilding " + model_type + " model...")
         
-        if model_type == "CNN-non-static":
-            vocabulary_size = len(embed_matrix)  # include 0 empty
-            input_shape = (sequence_length,)
+        if self.model_type == "CNN-non-static":
+            vocabulary_size = len(self.embed_matrix)  # include 0 empty
+            input_shape = (self.sequence_length,)
             model_input = Input(shape=input_shape)
-            z = Embedding(vocabulary_size, embedding_dim, input_length=sequence_length, weights=[embed_matrix])(model_input)
-        elif model_type == "CNN-static":
-            input_shape = (sequence_length, embedding_dim)
+            z = Embedding(vocabulary_size, self.embedding_dim, input_length=self.sequence_length,
+                           weights=[self.embed_matrix])(model_input)
+        elif self.model_type == "CNN-static":
+            input_shape = (self.sequence_length, self.embedding_dim)
             model_input = Input(shape=input_shape)
             z = model_input            
         
-        z = Dropout(dropout_prob[0])(z)
+        z = Dropout(self.dropout_prob[0])(z)
         
         # Convolutional block
         conv_blocks = []
-        for sz in filter_sizes:
-            conv = Convolution1D(filters=num_filters,
+        for sz in self.filter_sizes:
+            conv = Convolution1D(filters=self.num_filters,
                                  kernel_size=sz,
                                  padding="valid",
                                  activation="relu",
@@ -75,47 +87,48 @@ class TextCNN(object):
             conv_blocks.append(conv)
         z = Concatenate()(conv_blocks) if len(conv_blocks) > 1 else conv_blocks[0]
         
-        z = Dropout(dropout_prob[1])(z)
-        z = Dense(hidden_dims, activation="relu")(z)
+        z = Dropout(self.dropout_prob[1])(z)
+        z = Dense(self.hidden_dims, activation="relu")(z)
         model_output = Dense(number_of_class, activation="sigmoid")(z)
         
-        self.model = Model(model_input, model_output)
-        self.model.compile(loss="binary_crossentropy", optimizer="adam", metrics=["accuracy"])
+        model = Model(model_input, model_output)
+        model.compile(loss="binary_crossentropy", optimizer="adam", metrics=["accuracy"])
+        return model
 
-    def fit(self, X_train, y_train, X_val, y_val):
-        history = self.model.fit(X_train, y_train, batch_size=self.batch_size, epochs=self.num_epochs, verbose=self.verbose,
-                            validation_data=(X_val, y_val))
-        print("Training accuracy: ")
-        print([float(Decimal("%.4f" % e)) for e in history.history['acc']])
-#         print("Training loss: ")
-#         print([float(Decimal("%.4f" % e)) for e in history.history['loss']])
-        print("Validation accuracy: ")
-        print([float(Decimal("%.4f" % e)) for e in history.history['val_acc']])
-#         print("Validation loss: ")
-#         print([float(Decimal("%.4f" % e)) for e in history.history['val_loss']])
+    def fit(self, X_train, y_train, X_val=[], y_val=[]):
+        y_train = to_categorical(y_train)
+        if y_val: 
+            y_val = to_categorical(y_val)
+            history = self.model.fit(X_train, y_train, batch_size=self.batch_size,
+                                 epochs=self.num_epochs, verbose=self.verbose,
+                                validation_data=(X_val, y_val))
+        else:
+            history = self.model.fit(X_train, y_train, batch_size=self.batch_size,
+                                 epochs=self.num_epochs, verbose=self.verbose)
         return history
 
-    def predict(self, X_test, y_test):
+    def predict(self, X_test, y_test=[]):
         y_pred = self.model.predict(X_test, batch_size=self.batch_size, verbose=self.verbose)
-        loss, accuracy = self.model.evaluate(X_test, y_test, batch_size=self.batch_size, verbose=self.verbose)
-        print("Accuracy: ", accuracy)
-#         print("Testing loss: ", loss)
-        matrix = confusion_matrix(y_test.argmax(axis=1), y_pred.argmax(axis=1))
-        print("Confusion matrix:")
-        print(matrix)
-        compute_precision_recall_F1(y_pred.argmax(axis=1), y_test.argmax(axis=1), 4)
-        return (y_pred.argmax(axis=1), matrix)
+        return y_pred.argmax(axis=1)
 
+    def print_score(self, y_pred, y_true):
+        accuracy = accuracy_score(y_true, y_pred)
+        print("Testing accuracy:", accuracy)
+        print(classification_report(y_true, y_pred, target_names=['CCAT', 'ECAT', 'GCAT', 'MCAT']))
+        matrix = confusion_matrix(y_true, y_pred)
+        print("Confusion matrix:\n", matrix)
+        return matrix
+    
 
 def CNNCross(X, y, embeding,
              # Model Parameters
-            embedding_dim=50,
+            embedding_dim=300,  # 50,
             filter_sizes=(3, 8),
             num_filters=10,
             dropout_prob=(0.5, 0.8),
             hidden_dims=50,
             batch_size=64,
-            num_epochs=20,
+            num_epochs=50,
             sequence_length=400,
             verbose=False,
             ):
@@ -152,10 +165,6 @@ def CNNCross(X, y, embeding,
         
         em[i] = create_embedding_matrix(embeding[i], tok[i].word_index, embedding_dim, 100000)
         
-        y_train[i] = to_categorical(y_train[i])
-        y_test[i] = to_categorical(y_test[i])   
-        y_val[i] = to_categorical(y_val[i])
-        
         X_train_static[i] = np.stack([np.stack([em[i][word] for word in sentence]) for sentence in X_train[i]])
         X_test_static[i] = np.stack([np.stack([em[i][word] for word in sentence]) for sentence in X_test[i]])
         X_val_static[i] = np.stack([np.stack([em[i][word] for word in sentence]) for sentence in X_val[i]])
@@ -164,23 +173,6 @@ def CNNCross(X, y, embeding,
         print("X_val static shape: " , X_val_static[i].shape)
     
     lang = ["EN", "ZH"]
-    
-    # choose testing 
-#     grid_search()
-#     run_CNN()
-    
-    def grid_search():
-        """Use grid search method to find best parameters"""
-        # Parameters to change
-        embedding_dim_list = [50, 100, 300]
-        filter_sizes_list = [(3, 8), (3, 4, 5)]
-        num_filters_list = [10, 50, 100]
-        dropout_prob_list = [(0.5, 0.8)]
-        hidden_dims_list = [50, 100]
-        batch_size_list = [64]
-        num_epochs_list = [20, 50, 100]
-        sequence_length_list = [100, 500, 1000]
-        
     testing_predict = []
     
     for model_type in ["CNN-static", "CNN-non-static"]:
@@ -211,17 +203,50 @@ def CNNCross(X, y, embeding,
                     X_train_ = X_train_static[i]
                     X_val_ = X_val_static[i]
                     X_test_ = X_test_static[j]
+                
                 # Build and run
-                text_model = TextCNN(model_type, embedding_dim, filter_sizes, num_filters,
-                             dropout_prob, hidden_dims, sequence_length, batch_size, num_epochs, verbose, em_)
-                print("Training on: ", training_lang)
-                history = text_model.fit(X_train_, y_train_, X_val_, y_val_)
-                if j == i: 
-                    training_history.append(history)
-                    label.append(training_lang)
-                print("Testing on: ", testing_lang)
-                testing_predict.append(text_model.predict(X_test_, y_test_))
-               
+                def run_cnn():
+                    """Use default parameters to train CNN model"""
+                    print("\nTraining/Testing Pair: " + training_lang + "-" + testing_lang)
+                    print("\nBuilding " + model_type + " model...")
+                    text_model = TextCNN(model_type, embedding_dim, filter_sizes, num_filters,
+                                 dropout_prob, hidden_dims, sequence_length, batch_size, num_epochs, verbose, em_)
+                    history = text_model.fit(X_train_, y_train_, X_val_, y_val_)
+                    print("Training accuracy: ")
+                    print([float(Decimal("%.4f" % e)) for e in history.history['acc']])
+                    if j == i: 
+                        training_history.append(history)
+                        label.append(training_lang)
+                    y_pred = text_model.predict(X_test_, y_test_)
+                    matrix = text_model.print_score(y_pred, y_test_)
+                    testing_predict.append((y_pred, matrix))
+                    
+                def grid_search():
+                    """Use grid search method to find best parameters"""
+                    print("\nGridSearching..." + training_lang + "-" + testing_lang)
+                    parameters = {
+                                'embedding_dim':[50, 100, 300],
+                                'filter_sizes':[(3, 8), (3, 4, 5)],
+                                'num_filters' :[10, 50, 100],
+                                'dropout_prob' : [(0.5, 0.8)],
+                                'hidden_dims' : [50, 100],
+                                'batch_size' : [64],
+                                'num_epochst' : [20, 50, 100],
+                                'sequence_length' : [100, 500, 1000],
+                                }
+                    text_model = TextCNN(model_type, embedding_dim, filter_sizes, num_filters,
+                                 dropout_prob, hidden_dims, sequence_length, batch_size, num_epochs, verbose, em_)
+                    gds = GridSearchCV(text_model, parameters, scoring='f1_micro', verbose=2)  # 'accuracy'
+#                     gds.fit(np.concatenate((X_train_, X_val_), axis=0), np.concatenate((y_train_, y_val_), axis=0))
+                    gds.fit(np.concatenate((X_train_, X_test_), axis=0), np.concatenate((y_train_, y_test_), axis=0))
+                    print("Best estimator found by grid search:")
+                    print(gds.best_estimator_)
+                    print("Scores for each grid:")
+                    print(gds.cv_results_)
+                
+                run_cnn()   
+#                 grid_search()
+                    
         plot_cnn_accuracy_history(training_history, label, model_type + " accuracy")
         
     return testing_predict
