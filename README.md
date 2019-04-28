@@ -9,14 +9,14 @@ And run following python code:
 nltk.download('wordnet')
 ```
 
-## How to run code
-Run main.py after following 'Inputs' or 'Middle outputs' prepared:
+## How to run
+Run main.py after following 'Inputs' or 'Middle outputs' are prepared.
 
 ## Inputs
 Inputs for data pre-processing:
 
 | File Name  | Folder | Description |
-| ------------- | ------------- |
+| ------------- | ------------- | ------------- |
 | wiki.en.align.vec  | ./data/  | English aligned word embedding [FastText](https://fasttext.cc/docs/en/aligned-vectors.html)|
 | wiki.zh.align.vec  | ./data/  | Chinese aligned word embedding [FastText](https://fasttext.cc/docs/en/aligned-vectors.html)|
 | ... | ./data/sport  | Chinese news corpus [THUCTC](http://thuctc.thunlp.org/)|
@@ -33,13 +33,17 @@ Inputs for data pre-processing:
 
 ## Middle outputs
 With middle outputs prepared, one can comment:
+
 ==========================Data preparation==========================
+
 in main.py, and jump to:
+
 ==========================Model training==========================
+
 directly.
 
 | File Name  | Folder | Description |
-| ------------- | ------------- |
+| ------------- | ------------- | ------------- |
 | X_c3  | ./mid/  | Chinese corpus after data pre-processing |
 | y_c3  | ./mid/  | Chinese label after data pre-processing |
 | X_e3  | ./mid/  | English corpus after data pre-processing |
@@ -49,6 +53,6 @@ directly.
 Outputs for running main.py:
 
 | File Name  | Folder | Description |
-| ------------- | ------------- |
+| ------------- | ------------- | ------------- |
 | .log  | ./output/  | Logs |
 | .png  | ./output/  | Charts |
