@@ -1,0 +1,13 @@
+{
+  "embeddings": [
+    {
+      "tensorName": "5 Languages Word Embedding",
+      "tensorShape": [
+        25000,
+        300
+      ],
+      "tensorPath": "https://raw.githubusercontent.com/JianweiQ/Cross-lingual-text-classification/master/mid/Embed_5lang_vec.tsv",
+      "metadataPath": "https://raw.githubusercontent.com/JianweiQ/Cross-lingual-text-classification/master/mid/Embed_5lang_label.tsv"
+    }
+  ]
+}
