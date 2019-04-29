@@ -14,7 +14,7 @@ def main():
     embed_file_zh = 'data/wiki.zh.align.vec'
     
     dataset_option = 3  # 1 for 20NewsGroup&THU, 2 for UM-corpus, 3 for RCV2, else for skip
-    model_option = 0  # 1 for traditional classifiers, 2 for CNN, 0 for both, else for skip
+    model_option = 1  # 1 for traditional classifiers, 2 for CNN, 0 for both, else for skip
     
     sys.stdout = Logger('output/output' + str(dataset_option) + str(model_option) + ".log")
     start = datetime.now()

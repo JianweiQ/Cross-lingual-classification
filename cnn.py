@@ -128,7 +128,7 @@ def CNNCross(X, y, embeding,
             dropout_prob=(0.5, 0.8),
             hidden_dims=50,
             batch_size=64,
-            num_epochs=50,
+            num_epochs=20,
             sequence_length=400,
             verbose=False,
             ):
@@ -163,7 +163,7 @@ def CNNCross(X, y, embeding,
         X_test[i] = tokenize_sequence(tok[i], X_test[i])
         X_val[i] = tokenize_sequence(tok[i], X_val[i])
         
-        em[i] = create_embedding_matrix(embeding[i], tok[i].word_index, embedding_dim, 100000)
+        em[i] = create_embedding_matrix(embeding[i], tok[i].word_index, embedding_dim)#, 100000)
         
         X_train_static[i] = np.stack([np.stack([em[i][word] for word in sentence]) for sentence in X_train[i]])
         X_test_static[i] = np.stack([np.stack([em[i][word] for word in sentence]) for sentence in X_test[i]])
@@ -175,11 +175,11 @@ def CNNCross(X, y, embeding,
     lang = ["EN", "ZH"]
     testing_predict = []
     
-    for model_type in ["CNN-static", "CNN-non-static"]:
+    for model_type in ["CNN-static"]:#, "CNN-non-static"]:
         training_history = []
         label = []
-        for i in range(2):  # train
-            for k in range(2):  # test
+        for i in range(1, -1, -1):#2):  # train
+            for k in range(1, -1, -1):#2):  # test
                 # Define parameters
                 j = 1 - k if i == 1 else k
                 y_train_ = y_train[i]
@@ -225,14 +225,14 @@ def CNNCross(X, y, embeding,
                     """Use grid search method to find best parameters"""
                     print("\nGridSearching..." + training_lang + "-" + testing_lang)
                     parameters = {
-                                'embedding_dim':[50, 100, 300],
+                                'embedding_dim':[300],#, 100, 300],
                                 'filter_sizes':[(3, 8), (3, 4, 5)],
                                 'num_filters' :[10, 50, 100],
                                 'dropout_prob' : [(0.5, 0.8)],
-                                'hidden_dims' : [50, 100],
+                                'hidden_dims' : [10, 50, 100],
                                 'batch_size' : [64],
-                                'num_epochst' : [20, 50, 100],
-                                'sequence_length' : [100, 500, 1000],
+                                'num_epochs' : [20],
+                                'sequence_length' : [400],
                                 }
                     text_model = TextCNN(model_type, embedding_dim, filter_sizes, num_filters,
                                  dropout_prob, hidden_dims, sequence_length, batch_size, num_epochs, verbose, em_)
@@ -245,7 +245,7 @@ def CNNCross(X, y, embeding,
                     print(gds.cv_results_)
                 
                 run_cnn()   
-#                 grid_search()
+                grid_search()
                     
         plot_cnn_accuracy_history(training_history, label, model_type + " accuracy")
         

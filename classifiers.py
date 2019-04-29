@@ -1,6 +1,7 @@
 from sklearn.metrics import confusion_matrix, classification_report
 from sklearn.metrics import accuracy_score
 from sklearn.svm import LinearSVC
+from plot import prepare_document_embedding_tsv
 import numpy as np
 import io
 
@@ -34,7 +35,9 @@ def average_traditional_classifiers(X, y, embeding):
     X_c_train = np.concatenate((X_c[:1000], X_c[5000:]), axis=0)
     y_c_train = np.concatenate((y_c[:1000], y_c[5000:]), axis=0)
     X_c_test, y_c_test = X_c[1000:5000], y_c[1000:5000]
-     
+    
+#     prepare_document_embedding_tsv(X_e, y_e, X_c, y_c, "DocEmbed_average")
+    
     ret = []
     ret.append(classifiers(X_train, y_train, X_test, y_test, "EN-EN"))
     ret.append(classifiers(X_train, y_train, X_c, y_c, "EN-ZH"))

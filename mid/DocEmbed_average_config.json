@@ -1,0 +1,13 @@
+{
+  "embeddings": [
+    {
+      "tensorName": "Average Document Embedding",
+      "tensorShape": [
+        12000,
+        300
+      ],
+      "tensorPath": "https://raw.githubusercontent.com/JianweiQ/Cross-lingual-text-classification/master/mid/DocEmbed_average_vec.tsv",
+      "metadataPath": "https://raw.githubusercontent.com/JianweiQ/Cross-lingual-text-classification/master/mid/DocEmbed_average_label.tsv"
+    }
+  ]
+}

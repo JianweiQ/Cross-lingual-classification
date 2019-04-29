@@ -1,5 +1,95 @@
+import io
+import os
 import numpy as np
 import matplotlib.pyplot as plt
+import tensorflow as tf
+from tensorflow.examples.tutorials.mnist import input_data
+
+
+def prepare_word_embedding_tsv(embed_file_list, language_list, saved_file, size=float('inf')):
+    """
+    merge word embedding as middle outputs for visualization. Also Inputs in: 
+    https://projector.tensorflow.org/
+    param:
+    embed_file_list, a list of string for path of word embedding
+    language_list, a list of string for language label
+    saved_file, string for saved file name
+    size, maximum load size
+    return: saved tsv file: mid/..._vec.tsv & mid/..._label.tsv
+    """
+    
+    embedding_vec = open("mid/" + saved_file + "_vec.tsv", 'w')
+    embedding_label = open("mid/" + saved_file + "_label.tsv", 'w')
+    embedding_label.write("Word\tLanguage\n")  # 2 labels
+    
+    def load(file_name, label, size):
+        print('\nGeneratingWordEmbeddingTSV:' + file_name + '...')
+        fin = io.open(file_name, 'r', encoding='utf-8', newline='\n', errors='ignore')
+        n, d = map(int, fin.readline().split())
+        print(min(n, size), d)  # n is #words, d is dimension
+        cur = 1
+        for line in fin:
+            tokens = line.rstrip().split(' ')
+            embedding_label.write(tokens[0] + "\t" + label + "\n")
+            for i in range(1, 300):
+                embedding_vec.write(tokens[i] + "\t")
+            embedding_vec.write(tokens[300] + "\n")
+            if (cur >= size): break 
+            else: cur += 1
+    
+    for i in range(len(embed_file_list)):
+        load(embed_file_list[i], language_list[i], size)   
+    
+    embedding_vec.close()
+    embedding_label.close()
+    
+
+def prepare_document_embedding_tsv(X_e, y_e, X_c, y_c, saved_file):
+    """
+    merge document embedding as middle outputs for visualization. Also Inputs in: 
+    https://projector.tensorflow.org/
+    param:
+    X_e, a list of document vectors for English
+    y_e, a list of document labels for English
+    X_c, a list of document vectors for Chinese
+    y_c, a list of document labels for Chinese
+    saved_file, string for saved file name
+    return: saved tsv file: mid/..._vec.tsv & mid/..._label.tsv
+    """
+    embedding_vec = open("mid/" + saved_file + "_vec.tsv", 'w')
+    embedding_label = open("mid/" + saved_file + "_label.tsv", 'w')
+    embedding_label.write("Topic\tLanguage\n")  # 2 labels
+    label_list = ['CCAT', 'ECAT', 'GCAT', 'MCAT']
+    
+    def load(X, y, label):
+        print('\nGeneratingDocumentEmbeddingTSV:' + label + '...')
+        for i in range(len(X)):
+            embedding_label.write(label_list[y[i]] + "\t" + label + "\n")
+            for j in range(len(X[i])-1):
+                embedding_vec.write("{:.4f}".format(X[i][j]) + "\t")
+            embedding_vec.write("{:.4f}".format(X[i][-1]) + "\n")
+    
+    load(X_e, y_e, "English") 
+    load(X_c, y_c, "Chinese")     
+    
+    embedding_vec.close()
+    embedding_label.close()
+
+def visualize_word_embedding():
+    """Sample functions to visualize word embedding locally
+    Run in terminal: tensorboard --logdir=logs
+    open an explore and enter localhost:6006
+    """
+    LOG_DIR = 'logs'
+
+    mnist = input_data.read_data_sets('MNIST_data')
+    images = tf.Variable(mnist.test.images, name='images')
+    
+    with tf.Session() as sess:
+        saver = tf.train.Saver([images])
+    
+        sess.run(images.initializer)
+        saver.save(sess, os.path.join(LOG_DIR, 'images.ckpt'))
 
 
 def plot_bar_chart_count(X_e_count, X_c_count, title):
@@ -172,3 +262,9 @@ def main():
 
 if __name__ == '__main__':
     main()
+#     prepare_word_embedding_tsv(['data/wiki.en.align.vec', 'data/wiki.zh.align.vec'
+#                                   , 'data/wiki.es.align.vec', 'data/wiki.de.align.vec', 'data/wiki.fr.align.vec']
+#                                   , ["English", "Chinese", "Spanish", "German", "French"], "Embed_5lang" , 5000)
+#     prepare_word_embedding_tsv(['data/wiki.en.align.vec', 'data/wiki.zh.align.vec']
+#                               , ["English", "Chinese"], "Embed_EN_ZH" , 5000)
+
