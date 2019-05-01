@@ -8,13 +8,14 @@ from nltk.stem import WordNetLemmatizer
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 
-def countUniqueWords(docs, labels, k):
+def countUniqueWords(docs, labels, k, w2v=None):
     """
     param:
         docs: a list of strings
         labels: a list of k integers (0...k-1), representing k labels/categories.
             docs and labels should have the same length
         k: int, the number of categories. k = 4 for reuters dataset
+        w2v: word embedding dictionary, used to count how many words can be found
     return:
         nUniqueWords: a list of k numbers, each representing the number 
             of unique words for docs in that category
@@ -24,8 +25,12 @@ def countUniqueWords(docs, labels, k):
         doc = docs[i]
         words = doc.strip().split()
         for word in words:
-            if word not in uniqueWords[labels[i]]:
-                uniqueWords[labels[i]].add(word)
+            if w2v:
+                if word in w2v and word not in uniqueWords[labels[i]]:
+                    uniqueWords[labels[i]].add(word)
+            else:   
+                if word not in uniqueWords[labels[i]]:
+                    uniqueWords[labels[i]].add(word)
     X_count = []
     for i in range(k):
         X_count.append(len(uniqueWords[i]))

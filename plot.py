@@ -1,9 +1,6 @@
 import io
-import os
 import numpy as np
 import matplotlib.pyplot as plt
-import tensorflow as tf
-from tensorflow.examples.tutorials.mnist import input_data
 
 
 def prepare_word_embedding_tsv(embed_file_list, language_list, saved_file, size=float('inf')):
@@ -65,7 +62,7 @@ def prepare_document_embedding_tsv(X_e, y_e, X_c, y_c, saved_file):
         print('\nGeneratingDocumentEmbeddingTSV:' + label + '...')
         for i in range(len(X)):
             embedding_label.write(label_list[y[i]] + "\t" + label + "\n")
-            for j in range(len(X[i])-1):
+            for j in range(len(X[i]) - 1):
                 embedding_vec.write("{:.4f}".format(X[i][j]) + "\t")
             embedding_vec.write("{:.4f}".format(X[i][-1]) + "\n")
     
@@ -74,22 +71,6 @@ def prepare_document_embedding_tsv(X_e, y_e, X_c, y_c, saved_file):
     
     embedding_vec.close()
     embedding_label.close()
-
-def visualize_word_embedding():
-    """Sample functions to visualize word embedding locally
-    Run in terminal: tensorboard --logdir=logs
-    open an explore and enter localhost:6006
-    """
-    LOG_DIR = 'logs'
-
-    mnist = input_data.read_data_sets('MNIST_data')
-    images = tf.Variable(mnist.test.images, name='images')
-    
-    with tf.Session() as sess:
-        saver = tf.train.Saver([images])
-    
-        sess.run(images.initializer)
-        saver.save(sess, os.path.join(LOG_DIR, 'images.ckpt'))
 
 
 def plot_bar_chart_count(X_e_count, X_c_count, title):
@@ -173,32 +154,68 @@ def plot_confusion_matrices(matrices, titles, classes=['C', 'E', 'G', 'M']):
 
 def plot_cnn_accuracy_history(history, label, title):
     """
-    Plot accuracy trend along traing epoch
+    Plot accuracy trend along training epoch
     history: history list from model.fit
-    label: language pair label e.g.ZH-EH
+    label: training language list e.g.[EN, ZH]
     title: title of graph
     """
     color_set = ["darkblue", "orangered"]
-    x = range(1, len(history[0].history['val_acc']) + 1)
+    x = range(1, len(history[0].history['acc']) + 1)
     
-    def plot(y, msg):
-        for i in range(len(label)):
-            plt.plot(x, history[i].history[y + 'acc'], color_set[i], label=label[i] + "_Accuracy", linestyle='-')
-            plt.plot(x, history[i].history[y + 'loss'], color_set[i], label=label[i] + "_Loss", linestyle='--')
-        plt.xlabel('Training Steps')
-        plt.ylabel('Accuracy/Loss')
-        plt.title(title + msg)
-        plt.legend(loc=4)  # bottom right
-        plt.savefig('output/' + title + msg + '.png')
+    for i in range(len(label)):
+        plt.plot(x, history[i].history['acc'], color_set[i], label=label[i] + "_Accuracy", linestyle='-')
+        plt.plot(x, history[i].history['loss'], color_set[i], label=label[i] + "_Loss", linestyle='--')
+    plt.xlabel('Training Steps')
+    plt.ylabel('Accuracy/Loss')
+    plt.title(title)
+    plt.legend(loc=4)  # bottom right
+    plt.savefig('output/' + title + '.png')
 #         plt.show()
-        plt.clf()
-    
-    plot('', " (training)")
-    plot('val_', " (validation)")
+    plt.clf()
 
+
+def plot_svc_cnn_outputs(svc, cnn):
+    """
+    print scores in formated table, plot matrix
+    svc, output scores from svc model
+    cnn, output scores from cnn model
+    """
+    titles = [
+        'LinearSVC,EN-EN', 'LinearSVC,EN-ZH', 'LinearSVC,ZH-ZH', 'LinearSVC,ZH-EN',
+        'CNN-static,EN-EN', 'CNN-static,EN-ZH', 'CNN-static,ZH-ZH', 'CNN-static,ZH-EN',
+        'CNN-non-st,EN-EN', 'CNN-non-st,EN-ZH', 'CNN-non-static,ZH-ZH', 'CNN-non-static,ZH-EN',
+         ]
+    matrices = []
+    accuracy = []
+    precision = []
+    recall = []
+    f1_micro = []
+    for item in svc + cnn:
+        matrices.append(item[0])
+        accuracy.append(item[1])
+        precision.append(item[2])
+        recall.append(item[3])
+        f1_micro.append(item[4])
+        
+    np.asarray(matrices)
+    print("\nConfusion matrix summary: ", matrices)
     
-def main():
+    print("\nAccuracy summary: ")
+    for i in range(0, 12, 4):
+        print(" ".join(list(map(str, accuracy[i:i + 4]))))
+     
+    print("\nF1s summary: ")
+    for i in range(0, 12, 4):
+        print(" ".join(list(map(str, precision[i:i + 4]))))
+        print(" ".join(list(map(str, recall[i:i + 4]))))
+        print(" ".join(list(map(str, f1_micro[i:i + 4]))))
     
+#     plot_confusion_matrices(matrices, titles)
+    
+    
+def plot_confusion_matrices_with_outputs():
+    """Plot confusion matrices given by output.log"""
+     
     # confusion matrix
     matrices = [np.asarray([[846, 50, 27, 68],
        [ 35, 856, 57, 52],
@@ -212,56 +229,90 @@ def main():
        [  29, 73, 5, 1146]]), np.asarray([[1404, 0, 3, 82],
        [1066, 21, 52, 333],
        [ 304, 1, 1060, 183],
-       [ 456, 0, 2, 1033]]), np.asarray([[854, 56, 8, 73],
-       [ 44, 905, 8, 43],
-       [ 46, 83, 891, 10],
-       [ 44, 68, 0, 867]]), np.asarray([[ 427, 133, 0, 609],
-       [  17, 373, 0, 825],
-       [  12, 258, 43, 50],
-       [   3, 30, 0, 1220]]), np.asarray([[ 955, 144, 53, 17],
-       [  97, 1031, 57, 30],
-       [  19, 30, 314, 0],
-       [  38, 90, 8, 1117]]), np.asarray([[646, 126, 2, 217],
-       [130, 686, 2, 182],
-       [ 62, 337, 45, 586],
-       [ 54, 71, 0, 854]]), np.asarray([[871, 47, 27, 46],
-       [ 42, 883, 42, 33],
-       [ 23, 17, 989, 1],
-       [ 47, 55, 2, 875]]), np.asarray([[ 624, 7, 30, 508],
-       [ 113, 103, 90, 909],
-       [  33, 33, 277, 20],
-       [  38, 13, 12, 1190]]), np.asarray([[1020, 105, 23, 21],
-       [  88, 1100, 6, 21],
-       [  35, 79, 249, 0],
-       [  24, 72, 3, 1154]]), np.asarray([[523, 360, 3, 105],
-       [ 60, 863, 3, 74],
-       [ 38, 377, 44, 571],
-       [ 64, 376, 1, 538]])]
-#     [[[846, 50, 27, 68], [35, 856, 57, 52], [27, 27, 972, 4], [36, 61, 8, 874]],
-#     [[645, 16, 3, 1123], [15, 63, 6, 1717], [19, 26, 173, 347], [4, 1, 0, 1842]],
-#     [[980, 123, 17, 49], [105, 1035, 31, 44], [24, 45, 293, 1], [29, 73, 5, 1146]],
-#     [[1404, 0, 3, 82], [1066, 21, 52, 333], [304, 1, 1060, 183], [456, 0, 2, 1033]],
-#     [[288, 546, 42, 115], [9, 960, 20, 11], [16, 152, 839, 23], [45, 340, 7, 587]],
-#     [[65, 46, 3, 1055], [2, 79, 1, 1133], [1, 101, 41, 220], [0, 27, 0, 1226]],
-#     [[908, 179, 28, 54], [99, 973, 32, 111], [31, 100, 226, 6], [36, 105, 4, 1108]],
-#     [[231, 502, 29, 229], [10, 913, 10, 67], [3, 298, 324, 405], [8, 270, 0, 701]],
-#     [[773, 105, 35, 78], [28, 910, 30, 32], [69, 39, 922, 0], [35, 75, 1, 868]],
-#     [[295, 42, 10, 822], [103, 25, 5, 1082], [178, 41, 38, 106], [22, 13, 0, 1218]],
-#     [[1007, 106, 44, 12], [89, 1094, 11, 21], [55, 95, 207, 6], [19, 75, 14, 1145]],
-#     [[5, 900, 9, 77], [0, 899, 3, 98], [0, 513, 3, 514], [0, 585, 1, 393]]]
-    
+       [ 456, 0, 2, 1033]]), np.asarray([[853, 48, 26, 64],
+       [ 34, 891, 38, 37],
+       [ 23, 32, 968, 7],
+       [ 36, 62, 8, 873]]), np.asarray([[ 808, 159, 4, 198],
+       [  56, 872, 3, 284],
+       [  35, 169, 151, 8],
+       [  23, 79, 0, 1151]]), np.asarray([[ 959, 114, 35, 61],
+       [  76, 1055, 27, 57],
+       [  21, 48, 292, 2],
+       [  20, 64, 0, 1169]]), np.asarray([[804, 74, 0, 113],
+       [184, 714, 0, 102],
+       [118, 174, 27, 711],
+       [132, 98, 0, 749]]), np.asarray([[856, 43, 20, 72],
+       [ 33, 910, 22, 35],
+       [ 22, 40, 960, 8],
+       [ 26, 53, 6, 894]]), np.asarray([[ 812, 110, 6, 241],
+       [  86, 593, 7, 529],
+       [  47, 136, 169, 11],
+       [  27, 93, 0, 1133]]), np.asarray([[ 985, 109, 37, 38],
+       [  73, 1090, 20, 32],
+       [  37, 64, 258, 4],
+       [  22, 67, 3, 1161]]), np.asarray([[893, 50, 6, 42],
+       [318, 620, 7, 55],
+       [214, 163, 334, 319],
+       [366, 64, 2, 547]])]
+     
     matrices = np.asarray(matrices)
-    
+     
     np.set_printoptions(precision=2)
     plot_confusion_matrices(matrices, titles=[
         'LinearSVC,EN-EN', 'LinearSVC,EN-ZH', 'LinearSVC,ZH-ZH', 'LinearSVC,ZH-EN',
         'CNN-static,EN-EN', 'CNN-static,EN-ZH', 'CNN-static,ZH-ZH', 'CNN-static,ZH-EN',
-        'CNN-non-st,EN-EN', 'CNN-non-st,EN-ZH', 'CNN-non-static,ZH-ZH', 'CNN-non-static,ZH-EN',
+        'CNN-non-static,EN-EN', 'CNN-non-static,EN-ZH', 'CNN-non-static,ZH-ZH', 'CNN-non-static,ZH-EN',
          ])
 
 
+def plot_cnn_accuracy_history_with_output():
+    """Plot accuracy history given by output.log"""
+    label = ["EN", "ZH"]
+    
+    history_static = {}
+    title_static = "CNN-static accuracy and loss"
+    history_non_static = {}
+    title_non_static = "CNN-non-static accuracy and loss"
+    
+    plot_cnn_accuracy_history(history_static, label, title_static)
+    plot_cnn_accuracy_history(history_non_static, label, title_non_static)
+
+
+def plot_count_bar_chart_with_output():
+    """Plot words count bar charts given by output.log"""
+    X_count = [[33068, 29276, 55586, 35701], [8719, 8560, 12040, 8219], [8303, 8132, 11521, 7564],
+               [22746, 19507, 8922, 29704], [8826, 8446, 4309, 9680], [4998, 4677, 3137, 4758]]
+    labels = ["EN(Ori)", "EN(Pro)", "EN(Inc)", "ZH(Ori)", "ZH(Pro)", "ZH(Inc)"]
+    n_groups = 4
+    title = "Unique words count"
+     
+    # create plot
+    fig = plt.subplots()
+    index = np.arange(n_groups)
+    bar_width = 0.15
+     
+    color_set = ["darkblue", "darkblue", "darkblue", "orangered", "orangered", "orangered"]
+    opacity_set = [1, 0.6, 0.3, 1, 0.6, 0.3]
+    
+    for i in range(len(X_count)):
+        plt.bar(index + bar_width * i, X_count[i], bar_width,
+                        alpha=opacity_set[i],
+                         color=color_set[i],
+                         label=labels[i])
+     
+    plt.xlabel('Topics')
+    plt.ylabel('Count')
+    plt.title(title)
+    plt.xticks(index + bar_width, ('CCAT', 'ECAT', 'GCAT', 'MCAT'))
+    plt.legend()
+     
+    plt.tight_layout()
+    plt.savefig('output/' + title + '.png')
+    plt.show()
+
+   
 if __name__ == '__main__':
-    main()
+    plot_count_bar_chart_with_output()
 #     prepare_word_embedding_tsv(['data/wiki.en.align.vec', 'data/wiki.zh.align.vec'
 #                                   , 'data/wiki.es.align.vec', 'data/wiki.de.align.vec', 'data/wiki.fr.align.vec']
 #                                   , ["English", "Chinese", "Spanish", "German", "French"], "Embed_5lang" , 5000)

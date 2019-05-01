@@ -1,24 +1,5 @@
-"""
-Train convolutional network for sentiment analysis on IMDB corpus. Based on
-"Convolutional Neural Networks for Sentence Classification" by Yoon Kim
-http://arxiv.org/pdf/1408.5882v2.pdf
-For "CNN-rand" and "CNN-non-static" gets to 88-90%, and "CNN-static" - 85% after 2-5 epochs with following settings:
-embedding_dim = 50
-filter_sizes = (3, 8)
-num_filters = 10
-dropout_prob = (0.5, 0.8)
-hidden_dims = 50
-Differences from original article:
-- larger IMDB corpus, longer sentences; sentence length is very important, just like data size
-- smaller embedding dimension, 50 instead of 300
-- 2 filter sizes instead of original 3
-- fewer filters; original work uses 100, experiments show that 3-10 is enough;
-- random initialization is no worse than word2vec init on IMDB corpus
-- sliding Max Pooling instead of original Global Pooling
-"""
-
 import numpy as np
-from keras.layers import Dense, Dropout, Flatten, Input, MaxPooling1D, Embedding, Convolution1D
+from keras.layers import Dense, Dropout, Flatten, Input, MaxPooling1D, Embedding, Convolution1D, GlobalMaxPooling1D, AlphaDropout
 from keras.layers.merge import Concatenate
 from keras.models import Model
 from keras.preprocessing.text import Tokenizer
@@ -72,27 +53,52 @@ class TextCNN(BaseEstimator):
             model_input = Input(shape=input_shape)
             z = model_input            
         
-        z = Dropout(self.dropout_prob[0])(z)
+        # MaxPooling1D
         
-        # Convolutional block
-        conv_blocks = []
+#         z = Dropout(self.dropout_prob[0])(z)
+#         
+#         # Convolutional block
+#         conv_blocks = []
+#         for sz in self.filter_sizes:
+#             conv = Convolution1D(filters=self.num_filters,
+#                                  kernel_size=sz,
+#                                  padding="valid",
+#                                  activation="relu",
+#                                  strides=1)(z)
+#             conv = MaxPooling1D(pool_size=2)(conv)
+#             conv = Flatten()(conv)
+#             conv_blocks.append(conv)
+#         z = Concatenate()(conv_blocks) if len(conv_blocks) > 1 else conv_blocks[0]
+#         
+#         z = Dropout(self.dropout_prob[1])(z)
+#         z = Dense(self.hidden_dims, activation="relu")(z)
+#         model_output = Dense(number_of_class, activation="sigmoid")(z)
+#         
+#         model = Model(model_input, model_output)
+#         model.compile(loss="binary_crossentropy", optimizer="adam", metrics=["accuracy"])
+        
+        # GlobalMaxPooling1D
+        
+        convolution_output = []
         for sz in self.filter_sizes:
             conv = Convolution1D(filters=self.num_filters,
                                  kernel_size=sz,
-                                 padding="valid",
-                                 activation="relu",
-                                 strides=1)(z)
-            conv = MaxPooling1D(pool_size=2)(conv)
-            conv = Flatten()(conv)
-            conv_blocks.append(conv)
-        z = Concatenate()(conv_blocks) if len(conv_blocks) > 1 else conv_blocks[0]
-        
-        z = Dropout(self.dropout_prob[1])(z)
-        z = Dense(self.hidden_dims, activation="relu")(z)
-        model_output = Dense(number_of_class, activation="sigmoid")(z)
-        
-        model = Model(model_input, model_output)
+                                 activation='tanh',
+                                 name='Conv1D_{}_{}'.format(self.num_filters, sz))(z)
+            pool = GlobalMaxPooling1D(name='MaxPoolingOverTime_{}_{}'.format(self.num_filters, sz))(conv)
+            convolution_output.append(pool)
+        x = Concatenate()(convolution_output)
+        # Fully connected layers
+        for fl in [self.hidden_dims]:
+            x = Dense(fl, activation='selu', kernel_initializer='lecun_normal')(x)
+            x = AlphaDropout(self.dropout_prob[0])(x)
+        # Output layer
+        predictions = Dense(number_of_class, activation='softmax')(x)
+        # Build and compile model
+        model = Model(inputs=model_input, outputs=predictions)
         model.compile(loss="binary_crossentropy", optimizer="adam", metrics=["accuracy"])
+        
+        model.summary()
         return model
 
     def fit(self, X_train, y_train, X_val=[], y_val=[]):
@@ -111,31 +117,37 @@ class TextCNN(BaseEstimator):
         y_pred = self.model.predict(X_test, batch_size=self.batch_size, verbose=self.verbose)
         return y_pred.argmax(axis=1)
 
-    def print_score(self, y_pred, y_true):
+    def scores(self, y_pred, y_true):
         accuracy = accuracy_score(y_true, y_pred)
         print("Testing accuracy:", accuracy)
-        print(classification_report(y_true, y_pred, target_names=['CCAT', 'ECAT', 'GCAT', 'MCAT']))
+        dic = classification_report(y_true, y_pred, target_names=['CCAT', 'ECAT', 'GCAT', 'MCAT'],
+                                     digits=4, output_dict=True)
+        print(classification_report(y_true, y_pred, target_names=['CCAT', 'ECAT', 'GCAT', 'MCAT'],
+                                     digits=4))
         matrix = confusion_matrix(y_true, y_pred)
         print("Confusion matrix:\n", matrix)
-        return matrix
+        precision = dic['macro avg']['precision']
+        recall = dic['macro avg']['recall']
+        f1_micro = dic['micro avg']['f1-score']
+        return (matrix, accuracy, precision, recall, f1_micro)
     
 
 def CNNCross(X, y, embeding,
              # Model Parameters
-            embedding_dim=300,  # 50,
-            filter_sizes=(3, 8),
-            num_filters=10,
+            embedding_dim=300,
+            filter_sizes=(3, 4, 5),
+            num_filters=100,
             dropout_prob=(0.5, 0.8),
             hidden_dims=50,
             batch_size=64,
-            num_epochs=20,
+            num_epochs=50,
             sequence_length=400,
             verbose=False,
             ):
     """param: X list of list of docs for 2 languages
     param: y list of list of target for 2 languages
     param: embedding, list of word embedding path for 2 languages
-    return: Trained CNN and classifer on 2 languages"""    
+    return: confusion matrix and scores"""    
 
     def tokenize_sequence(tok, X):
         """
@@ -163,7 +175,7 @@ def CNNCross(X, y, embeding,
         X_test[i] = tokenize_sequence(tok[i], X_test[i])
         X_val[i] = tokenize_sequence(tok[i], X_val[i])
         
-        em[i] = create_embedding_matrix(embeding[i], tok[i].word_index, embedding_dim)#, 100000)
+        em[i] = create_embedding_matrix(embeding[i], tok[i].word_index, embedding_dim)  # , 100000)
         
         X_train_static[i] = np.stack([np.stack([em[i][word] for word in sentence]) for sentence in X_train[i]])
         X_test_static[i] = np.stack([np.stack([em[i][word] for word in sentence]) for sentence in X_test[i]])
@@ -173,15 +185,22 @@ def CNNCross(X, y, embeding,
         print("X_val static shape: " , X_val_static[i].shape)
     
     lang = ["EN", "ZH"]
-    testing_predict = []
+    cnn_scores = []
     
-    for model_type in ["CNN-static"]:#, "CNN-non-static"]:
+    for model_type in ["CNN-static", "CNN-non-static"]:
         training_history = []
         label = []
-        for i in range(1, -1, -1):#2):  # train
-            for k in range(1, -1, -1):#2):  # test
+        for i in range(2):  # train
+            for k in range(2):  # test
                 # Define parameters
                 j = 1 - k if i == 1 else k
+
+#     for model_type in ["CNN-static"]:
+#         training_history = []
+#         label = []
+#         for i in range(2):  # train
+#             for j in [1 - i]:
+                
                 y_train_ = y_train[i]
                 y_val_ = y_val[i]
                 y_test_ = y_test[j]
@@ -214,42 +233,43 @@ def CNNCross(X, y, embeding,
                     history = text_model.fit(X_train_, y_train_, X_val_, y_val_)
                     print("Training accuracy: ")
                     print([float(Decimal("%.4f" % e)) for e in history.history['acc']])
+                    print("Training loss: ")
+                    print([float(Decimal("%.4f" % e)) for e in history.history['loss']])
                     if j == i: 
                         training_history.append(history)
                         label.append(training_lang)
                     y_pred = text_model.predict(X_test_, y_test_)
-                    matrix = text_model.print_score(y_pred, y_test_)
-                    testing_predict.append((y_pred, matrix))
+                    scores = text_model.scores(y_pred, y_test_)
+                    cnn_scores.append(scores)
                     
                 def grid_search():
                     """Use grid search method to find best parameters"""
                     print("\nGridSearching..." + training_lang + "-" + testing_lang)
                     parameters = {
-                                'embedding_dim':[300],#, 100, 300],
+                                'embedding_dim':[50, 100, 300],
                                 'filter_sizes':[(3, 8), (3, 4, 5)],
                                 'num_filters' :[10, 50, 100],
                                 'dropout_prob' : [(0.5, 0.8)],
                                 'hidden_dims' : [10, 50, 100],
-                                'batch_size' : [64],
-                                'num_epochs' : [20],
-                                'sequence_length' : [400],
+                                'batch_size' : [32, 64],
+                                'num_epochs' : [20, 50],
+                                'sequence_length' : [100, 400],
                                 }
                     text_model = TextCNN(model_type, embedding_dim, filter_sizes, num_filters,
                                  dropout_prob, hidden_dims, sequence_length, batch_size, num_epochs, verbose, em_)
                     gds = GridSearchCV(text_model, parameters, scoring='f1_micro', verbose=2)  # 'accuracy'
-#                     gds.fit(np.concatenate((X_train_, X_val_), axis=0), np.concatenate((y_train_, y_val_), axis=0))
-                    gds.fit(np.concatenate((X_train_, X_test_), axis=0), np.concatenate((y_train_, y_test_), axis=0))
+                    gds.fit(np.concatenate((X_train_, X_val_), axis=0), np.concatenate((y_train_, y_val_), axis=0))
                     print("Best estimator found by grid search:")
                     print(gds.best_estimator_)
                     print("Scores for each grid:")
                     print(gds.cv_results_)
                 
                 run_cnn()   
-                grid_search()
+#                 grid_search()
                     
-        plot_cnn_accuracy_history(training_history, label, model_type + " accuracy")
+        plot_cnn_accuracy_history(training_history, label, model_type + " accuracy and loss")
         
-    return testing_predict
+    return cnn_scores
 
 
 def create_embedding_matrix(filepath, word_index, embedding_dim, size=float('inf')):

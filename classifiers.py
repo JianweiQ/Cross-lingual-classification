@@ -1,7 +1,8 @@
 from sklearn.metrics import confusion_matrix, classification_report
 from sklearn.metrics import accuracy_score
 from sklearn.svm import LinearSVC
-from plot import prepare_document_embedding_tsv
+from preprocessing import countUniqueWords
+from plot import prepare_document_embedding_tsv, plot_bar_chart_count
 import numpy as np
 import io
 
@@ -10,7 +11,7 @@ def average_traditional_classifiers(X, y, embeding):
     """param: X list of list of tokens for 2 languages
     param: y list of list of target for 2 languages
     param: embedding, list of word embedding path for 2 languages
-    return: Trained CNN and classifer on 2 languages""" 
+    return: confusion matrix and scores""" 
     
     X_e = X[0]
     X_c = X[1]
@@ -23,11 +24,15 @@ def average_traditional_classifiers(X, y, embeding):
     
     # English feature (average)
     w2v = loadWordVectors(embed_file_en, 100000)  
+#     X_e_count = countUniqueWords(X_e, y_e, 4, w2v)
     X_e = featurize(X_e, w2v, embed_dim)
-        
+    
     # Chinese feature (average)
     w2v = loadWordVectors(embed_file_zh)  
+#     X_c_count = countUniqueWords(X_c, y_c, 4, w2v)
     X_c = featurize(X_c, w2v, embed_dim)
+    
+#     plot_bar_chart_count(X_e_count, X_c_count, "Unique words count in word embeddings")
      
     X_train = np.concatenate((X_e[:1000], X_e[5000:]), axis=0)
     y_train = np.concatenate((y_e[:1000], y_e[5000:]), axis=0)
@@ -56,12 +61,17 @@ def classifiers(X_train, y_train, X_test, y_test, msg):
         y_pred = clf.predict(X_test)
         accuracy = accuracy_score(y_test, y_pred)
         print("accuracy =", accuracy)
-        print(classification_report(y_test, y_pred, target_names=['CCAT', 'ECAT', 'GCAT', 'MCAT']))
-#         compute_precision_recall_F1(y_pred, y_test, 4)
+        dic = classification_report(y_test, y_pred, target_names=['CCAT', 'ECAT', 'GCAT', 'MCAT'],
+                                     digits=4, output_dict=True)
+        print(classification_report(y_test, y_pred, target_names=['CCAT', 'ECAT', 'GCAT', 'MCAT'],
+                                     digits=4))
         # row for true label and column for predicted label
         matrix = confusion_matrix(y_test, y_pred)
-        print(matrix)
-        return (y_pred, matrix)
+        print("Confusion matrix:\n", matrix)
+        precision = dic['macro avg']['precision']
+        recall = dic['macro avg']['recall']
+        f1_micro = dic['micro avg']['f1-score']
+        return (matrix, accuracy, precision, recall, f1_micro)
         
     ret = classifier(LinearSVC(), "LinearSVC")
     return ret
@@ -102,7 +112,7 @@ def loadWordVectors(fname, size=float('inf')):
     print('\nloadWordVectors:' + fname + '...')
     fin = io.open(fname, 'r', encoding='utf-8', newline='\n', errors='ignore')
     n, d = map(int, fin.readline().split())
-    print(n, d)  # n is #words, d is dimension
+    print(min(n, size), d)  # n is #words, d is dimension
     # fin.readline()
     data = {}
     cur = 0

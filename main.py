@@ -14,7 +14,7 @@ def main():
     embed_file_zh = 'data/wiki.zh.align.vec'
     
     dataset_option = 3  # 1 for 20NewsGroup&THU, 2 for UM-corpus, 3 for RCV2, else for skip
-    model_option = 1  # 1 for traditional classifiers, 2 for CNN, 0 for both, else for skip
+    model_option = 0  # 1 for traditional classifiers, 2 for CNN, 0 for both, else for skip
     
     sys.stdout = Logger('output/output' + str(dataset_option) + str(model_option) + ".log")
     start = datetime.now()
@@ -69,19 +69,7 @@ def main():
     elif model_option == 0:  # both
         svc = average_traditional_classifiers([X_e, X_c], [y_e, y_c], [embed_file_en, embed_file_zh])
         cnn = CNNCross([X_e, X_c], [y_e, y_c], [embed_file_en, embed_file_zh])
-        titles= [
-        'LinearSVC,EN-EN', 'LinearSVC,EN-ZH', 'LinearSVC,ZH-ZH', 'LinearSVC,ZH-EN',
-        'CNN-static,EN-EN', 'CNN-static,EN-ZH', 'CNN-static,ZH-ZH', 'CNN-static,ZH-EN',
-        'CNN-non-st,EN-EN', 'CNN-non-st,EN-ZH', 'CNN-non-static,ZH-ZH', 'CNN-non-static,ZH-EN',
-         ]
-        matrices = []
-        for item in svc:
-            matrices.append(item[1])
-        for item in cnn:
-            matrices.append(item[1])
-        np.asarray(matrices)
-        print(matrices)
-#         plot_confusion_matrices(matrices, titles)
+        plot_svc_cnn_outputs(svc, cnn)
 
     duartion = (datetime.now() - start).total_seconds()
     print("==========================Main Takes(s): " , duartion , "==========================")
