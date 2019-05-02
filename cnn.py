@@ -18,16 +18,23 @@ class TextCNN(BaseEstimator):
     def __init__(self,
         model_type,  # CNN-non-static|CNN-static
         # Model Building Parameters
-        embedding_dim, filter_sizes, num_filters, dropout_prob, hidden_dims, sequence_length,
+        embedding_dim,  # word embedding dimension
+        filter_sizes, # convolutional layer filter range
+        num_filters,  # convolutional layer filter number
+        dropout_prob, # random drop out probablilty
+        hidden_dims, # Hidden dimension in fully connected layer
+        sequence_length, # Max number of word per documents
         # Model Testing Parameters
-        batch_size, num_epochs, verbose,
-        # Embedding layer if CNN-non-static
+        batch_size, # number of object to train together
+        num_epochs, # number of iteration
+        verbose, # information print out class, higher for more information
+        # Embedding matrix (dictionary) for embedding layer if CNN-non-static
         embed_matrix=None,
         ):
         
-        self.model_type = model_type
-        self.embedding_dim = embedding_dim
-        self.filter_sizes = filter_sizes
+        self.model_type = model_type 
+        self.embedding_dim = embedding_dim 
+        self.filter_sizes = filter_sizes 
         self.num_filters = num_filters
         self.dropout_prob = dropout_prob
         self.hidden_dims = hidden_dims
@@ -54,9 +61,8 @@ class TextCNN(BaseEstimator):
             z = model_input            
         
         # MaxPooling1D
-        
-#         z = Dropout(self.dropout_prob[0])(z)
-#         
+#          
+#         z = Dropout(self.dropout_prob)(z)
 #         # Convolutional block
 #         conv_blocks = []
 #         for sz in self.filter_sizes:
@@ -69,14 +75,14 @@ class TextCNN(BaseEstimator):
 #             conv = Flatten()(conv)
 #             conv_blocks.append(conv)
 #         z = Concatenate()(conv_blocks) if len(conv_blocks) > 1 else conv_blocks[0]
-#         
-#         z = Dropout(self.dropout_prob[1])(z)
+#          
+#         z = Dropout(self.dropout_prob)(z)
 #         z = Dense(self.hidden_dims, activation="relu")(z)
 #         model_output = Dense(number_of_class, activation="sigmoid")(z)
-#         
+#          
 #         model = Model(model_input, model_output)
-#         model.compile(loss="binary_crossentropy", optimizer="adam", metrics=["accuracy"])
-        
+#         model.compile(loss="categorical_crossentropy", optimizer="adam", metrics=["accuracy"])
+#          
         # GlobalMaxPooling1D
         
         convolution_output = []
@@ -91,12 +97,12 @@ class TextCNN(BaseEstimator):
         # Fully connected layers
         for fl in [self.hidden_dims]:
             x = Dense(fl, activation='selu', kernel_initializer='lecun_normal')(x)
-            x = AlphaDropout(self.dropout_prob[0])(x)
+            x = AlphaDropout(self.dropout_prob)(x)
         # Output layer
         predictions = Dense(number_of_class, activation='softmax')(x)
         # Build and compile model
         model = Model(inputs=model_input, outputs=predictions)
-        model.compile(loss="binary_crossentropy", optimizer="adam", metrics=["accuracy"])
+        model.compile(loss="categorical_crossentropy", optimizer="adam", metrics=["accuracy"])
         
         model.summary()
         return model
@@ -137,7 +143,7 @@ def CNNCross(X, y, embeding,
             embedding_dim=300,
             filter_sizes=(3, 4, 5),
             num_filters=100,
-            dropout_prob=(0.5, 0.8),
+            dropout_prob=0.5,
             hidden_dims=50,
             batch_size=64,
             num_epochs=50,
@@ -247,9 +253,9 @@ def CNNCross(X, y, embeding,
                     print("\nGridSearching..." + training_lang + "-" + testing_lang)
                     parameters = {
                                 'embedding_dim':[50, 100, 300],
-                                'filter_sizes':[(3, 8), (3, 4, 5)],
+                                'filter_sizes':[(3, 4, 5)],
                                 'num_filters' :[10, 50, 100],
-                                'dropout_prob' : [(0.5, 0.8)],
+                                'dropout_prob' : [0.5, 0.8],
                                 'hidden_dims' : [10, 50, 100],
                                 'batch_size' : [32, 64],
                                 'num_epochs' : [20, 50],
