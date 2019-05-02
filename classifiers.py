@@ -45,9 +45,9 @@ def average_traditional_classifiers(X, y, embeding):
     
     ret = []
     ret.append(classifiers(X_train, y_train, X_test, y_test, "EN-EN"))
-    ret.append(classifiers(X_train, y_train, X_c, y_c, "EN-ZH"))
+    ret.append(classifiers(X_train, y_train, X_c_test, y_c_test, "EN-ZH"))
     ret.append(classifiers(X_c_train, y_c_train, X_c_test, y_c_test, "ZH-ZH"))
-    ret.append(classifiers(X_c_train, y_c_train, X_e, y_e, "ZH-EN"))
+    ret.append(classifiers(X_c_train, y_c_train, X_test, y_test, "ZH-EN"))
     return ret
 
 
